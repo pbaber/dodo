@@ -1,7 +1,31 @@
+use chrono::Date
 use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState},
     style::{Color, Style},
 };
+
+struct App {
+    should_exit: bool,
+    todo_list: TodoList,
+}
+
+struct TodoList {
+    items: Vec<TodoItem>,
+    state: ListState,
+}
+
+#[derive(Debug)]
+struct TodoItem {
+    todo: String,
+    date: Date,
+    status: Status,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum Status {
+    Todo,
+    Completed,
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize the terminal
