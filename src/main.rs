@@ -1,9 +1,12 @@
 use ratatui::widgets::Widget;
+use ratatui::layout::Constraint;
+use ratatui::layout::Layout;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use chrono::{Local, NaiveDate};
 use crossterm::{event::{KeyCode, KeyEvent}};
 use color_eyre::Result;
+use ratatui::widgets::Paragraph;
 
 fn main() -> Result<(), color_eyre::Report> {
     color_eyre::install()?;
@@ -81,7 +84,28 @@ impl App {
 
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-       use ratatui::widgets::Paragraph;
-        Paragraph::new("My Todo App").render(area, buf);
+        let main_layout = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Fill(2),
+        ]);
+
+        let [top_area, bottom_area] = area.layout(&main_layout);
+
+        App::render_top(top_area, buf);
+        App::render_bottom(bottom_area, buf);
+    }
+}
+
+impl App {
+    fn render_top(area: Rect, buf: &mut Buffer) {
+        Paragraph::new("Here's my app")
+            .centered()
+            .render(area, buf);
+    }
+
+    fn render_bottom(area: Rect, buf: &mut Buffer) {
+        Paragraph::new("Here's the bottom part")
+            .left_aligned()
+            .render(area, buf);
     }
 }
