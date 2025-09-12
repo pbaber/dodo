@@ -1,4 +1,3 @@
-use ratatui::widgets::Widget;
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::buffer::Buffer;
@@ -6,7 +5,10 @@ use ratatui::layout::Rect;
 use chrono::{Local, NaiveDate};
 use crossterm::{event::{KeyCode, KeyEvent}};
 use color_eyre::Result;
-use ratatui::widgets::Paragraph;
+use ratatui::{DefaultTerminal};
+use ratatui::widgets::{
+    Block, List, StatefulWidget, Paragraph, Widget, ListItem,
+};
 
 fn main() -> Result<(), color_eyre::Report> {
     color_eyre::install()?;
@@ -62,7 +64,7 @@ impl Default for App {
 }
 
 impl App {
-    fn run(mut self, terminal: &mut ratatui::DefaultTerminal) -> Result<()> {
+    fn run(mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         while !self.should_exit {
             terminal.draw(|frame| frame.render_widget(&mut self, frame.area()))?;
             if let Some(key) = crossterm::event::read()?.as_key_press_event() {
@@ -85,13 +87,15 @@ impl App {
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let main_layout = Layout::vertical([
+            Constraint::Length(1),
             Constraint::Fill(1),
-            Constraint::Fill(2),
+            Constraint::Length(1),
         ]);
 
-        let [top_area, bottom_area] = area.layout(&main_layout);
+        let [top_area, mid_area, bottom_area] = area.layout(&main_layout);
 
         App::render_top(top_area, buf);
+        App::render_mid(self, mid_area, buf);
         App::render_bottom(bottom_area, buf);
     }
 }
@@ -103,9 +107,26 @@ impl App {
             .render(area, buf);
     }
 
+    fn render_mid(&mut self, area: Rect, buf: &mut Buffer) {
+        let items: Vec<ListItem> = self
+            .todo_list
+            .items
+            .iter()
+            .map(|todo_item| {
+               ListItem::new(format!("☐ {}", todo_item.todo))
+            })
+            .collect();
+
+
+        let list = List::new(items)
+            .block(Block::new());
+
+        StatefulWidget::render(list, area, buf, &mut self.todo_list.state);
+    }
+
     fn render_bottom(area: Rect, buf: &mut Buffer) {
         Paragraph::new("Here's the bottom part")
-            .left_aligned()
+            .centered()
             .render(area, buf);
     }
 }
