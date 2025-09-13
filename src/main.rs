@@ -18,11 +18,9 @@ fn main() -> Result<(), color_eyre::Report> {
 
 struct App {
     should_exit: bool,
-    #[allow(dead_code)]
     todo_list: TodoList,
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 struct TodoItem {
     todo: String,
@@ -31,14 +29,12 @@ struct TodoItem {
     date: NaiveDate
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum Status {
     Todo,
     Completed,
 }
 
-#[allow(dead_code)]
 struct TodoList {
     items: Vec<TodoItem>,
     state: ratatui::widgets::ListState,
@@ -77,11 +73,29 @@ impl App {
     fn handle_key(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => self.should_exit = true,
+            KeyCode::Enter => self.random_new_todo(),
             _ => {}
         }
 
     }
 
+    fn random_new_todo(&mut self) {
+        let new_item = random_new_todo_item();
+        self.todo_list.items.push(new_item);
+    }
+}
+
+fn new_todo_item(todo: &str, details: &str) -> TodoItem {
+    TodoItem {
+        todo: todo.to_string(),
+        details: details.to_string(),
+        status: Status::Todo,
+        date: Local::now().date_naive()
+    }
+}
+
+fn random_new_todo_item() -> TodoItem {
+    new_todo_item("Hi there", "Another todo")
 }
 
 impl Widget for &mut App {
