@@ -84,6 +84,8 @@ impl App {
     fn random_new_todo(&mut self) {
         let new_item = random_new_todo_item();
         self.todo_list.items.push(new_item);
+        let last_index = self.todo_list.items.len().saturating_sub(1);
+        self.todo_list.state.select(Some(last_index));
     }
 }
 
@@ -104,7 +106,7 @@ impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let main_layout = Layout::vertical([
             Constraint::Length(1),
-            Constraint::Max(1),
+            Constraint::Max(self.todo_list.items.len() as u16),
             Constraint::Length(3),
             Constraint::Fill(1),
             Constraint::Length(1),
