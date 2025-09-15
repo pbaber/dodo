@@ -6,9 +6,9 @@ use chrono::{Local, NaiveDate};
 use crossterm::{event::{KeyCode, KeyEvent}};
 use color_eyre::Result;
 use ratatui::{DefaultTerminal};
+use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::widgets::{
-    Block, List, StatefulWidget, Paragraph, Widget, ListItem,
-};
+    Block, List, StatefulWidget, Paragraph, Widget, ListItem};
 
 fn main() -> Result<(), color_eyre::Report> {
     color_eyre::install()?;
@@ -19,6 +19,7 @@ fn main() -> Result<(), color_eyre::Report> {
 struct App {
     should_exit: bool,
     todo_list: TodoList,
+    input: String,
 }
 
 #[derive(Debug)]
@@ -44,6 +45,7 @@ impl Default for App {
     fn default() -> Self {
         Self {
             should_exit: false,
+            input: String::from("INPUT AREA"),
             todo_list: TodoList {
                 items: vec![
                     TodoItem {
@@ -102,14 +104,18 @@ impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let main_layout = Layout::vertical([
             Constraint::Length(1),
+            Constraint::Max(1),
+            Constraint::Length(3),
             Constraint::Fill(1),
             Constraint::Length(1),
         ]);
 
-        let [top_area, mid_area, bottom_area] = area.layout(&main_layout);
+        let [top_area, mid_area, input_area, blank_area, bottom_area] = area.layout(&main_layout);
 
         App::render_top(top_area, buf);
         App::render_mid(self, mid_area, buf);
+        App::render_input_area(self, input_area, buf);
+        App::render_blank_area(self, blank_area, buf);
         App::render_bottom(bottom_area, buf);
     }
 }
@@ -117,6 +123,7 @@ impl Widget for &mut App {
 impl App {
     fn render_top(area: Rect, buf: &mut Buffer) {
         Paragraph::new("Here's my app")
+            .bold()
             .centered()
             .render(area, buf);
     }
@@ -136,6 +143,17 @@ impl App {
             .block(Block::new());
 
         StatefulWidget::render(list, area, buf, &mut self.todo_list.state);
+    }
+
+    fn render_input_area(&mut self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new(self.input.clone()) 
+            .block(Block::bordered())
+            .render(area, buf);
+    }
+
+    fn render_blank_area(&mut self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new(String::from(""))
+            .render(area, buf);
     }
 
     fn render_bottom(area: Rect, buf: &mut Buffer) {
