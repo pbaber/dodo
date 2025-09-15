@@ -19,7 +19,14 @@ fn main() -> Result<(), color_eyre::Report> {
 struct App {
     should_exit: bool,
     todo_list: TodoList,
+    input_mode: InputMode,
+    character_index: usize,
     input: String,
+}
+
+enum InputMode {
+    Normal,
+    Insert,
 }
 
 #[derive(Debug)]
@@ -45,6 +52,8 @@ impl Default for App {
     fn default() -> Self {
         Self {
             should_exit: false,
+            input_mode: InputMode::Normal,
+            character_index: 0,
             input: String::from("INPUT AREA"),
             todo_list: TodoList {
                 items: vec![
@@ -64,7 +73,10 @@ impl Default for App {
 impl App {
     fn run(mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         while !self.should_exit {
-            terminal.draw(|frame| frame.render_widget(&mut self, frame.area()))?;
+            terminal.draw(|f| {
+                f.render_widget(&mut self, f.area());
+            })?;
+            
             if let Some(key) = crossterm::event::read()?.as_key_press_event() {
                 self.handle_key(key);
             }
@@ -75,7 +87,9 @@ impl App {
     fn handle_key(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => self.should_exit = true,
-            KeyCode::Enter => self.random_new_todo(),
+            KeyCode::Enter => {
+                self.todo_list.items.push(new_todo_item(&self.input, &String::from("nothing to see")))
+            },
             _ => {}
         }
 
@@ -112,7 +126,15 @@ impl Widget for &mut App {
             Constraint::Length(1),
         ]);
 
-        let [top_area, mid_area, input_area, blank_area, bottom_area] = area.layout(&main_layout);
+        let [
+        top_area, 
+        mid_area, 
+        input_area, 
+        blank_area, 
+        bottom_area
+        ] = area.layout(&main_layout);
+
+        
 
         App::render_top(top_area, buf);
         App::render_mid(self, mid_area, buf);
