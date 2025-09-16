@@ -1,9 +1,9 @@
 use ratatui::layout::{Layout, Constraint, Position};
 use chrono::{Local, NaiveDate};
 use crossterm::{event::{KeyCode, KeyEvent}};
-use color_eyre::Result;
+use color_eyre::{owo_colors::OwoColorize, Result};
 use ratatui::{DefaultTerminal};
-use ratatui::style::{Stylize};
+use ratatui::style::{Stylize, Color, Style};
 use ratatui::widgets::{
     Block, List, Paragraph, ListItem};
 
@@ -21,6 +21,7 @@ struct App {
     input: String,
 }
 
+#[derive(PartialEq)]
 enum InputMode {
     Normal,
     Insert,
@@ -90,10 +91,11 @@ impl App {
 
     fn handle_key(&mut self, key: KeyEvent) {
         match key.code {
-            KeyCode::Char('q') | KeyCode::Esc => self.should_exit = true,
+            KeyCode::Char('q') => self.should_exit = true,
             KeyCode::Enter => {
                 self.todo_list.items.push(new_todo_item(&self.input, &String::from("nothing to see")))
             },
+            KeyCode::Esc => self.input_mode = InputMode::Normal,
             KeyCode::Char('i') => self.input_mode.toggle(), 
             _ => {}
         }
@@ -158,9 +160,17 @@ impl App {
 
 impl App {
     fn title(&self) -> Paragraph {
-        Paragraph::new("Here's my app")
+        if self.input_mode == InputMode::Insert {
+        Paragraph::new("Insert Mode")
             .bold()
+            .style(Style::default().fg(Color::Green))
             .centered()
+        } else {
+        Paragraph::new("Normal Mode")
+            .bold()
+            .style(Style::default().fg(Color::Yellow))
+            .centered()
+        }
     }
 
     fn todo_list(items: Vec<TodoItem>) -> List<'static> {
