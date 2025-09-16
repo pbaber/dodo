@@ -61,7 +61,7 @@ impl Default for App {
             should_exit: false,
             input_mode: InputMode::Normal,
             character_index: 0,
-            input: String::from("INPUT AREA"),
+            input: String::from(""),
             todo_list: TodoList {
                 items: vec![
                     TodoItem {
@@ -208,7 +208,7 @@ impl App {
 
     fn input_line(&mut self) -> Paragraph {
         Paragraph::new(self.input.clone()) 
-            .block(Block::bordered())
+            .block(Block::bordered().title_top("New Todo"))
     }
 
     fn footer(&mut self) -> Paragraph<'static> {
