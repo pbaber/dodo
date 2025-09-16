@@ -3,9 +3,12 @@ use chrono::{Local, NaiveDate};
 use crossterm::{event::{KeyCode, KeyEvent}};
 use color_eyre::{owo_colors::OwoColorize, Result};
 use ratatui::{DefaultTerminal};
-use ratatui::style::{Stylize, Color, Style};
+use ratatui::style::{Stylize, Color, Style, Modifier};
+use ratatui::style::palette::tailwind::{SLATE};
 use ratatui::widgets::{
-    Block, List, Paragraph, ListItem};
+    Block, List, Paragraph, ListItem, HighlightSpacing};
+
+const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 
 fn main() -> Result<(), color_eyre::Report> {
     color_eyre::install()?;
@@ -133,6 +136,8 @@ impl App {
     fn add_input_todo(&mut self) {
         let todo_item = new_todo_item(&self.input, "New status");
         self.todo_list.items.push(todo_item);
+        self.input = String::new();
+        self.character_index = 0;
     }
 }
 
@@ -203,7 +208,11 @@ impl App {
             })
             .collect();
 
-        return List::new(todo_items).block(Block::new())
+        return List::new(todo_items)
+            .block(Block::new())
+            .highlight_style(SELECTED_STYLE)
+            .highlight_symbol(">")
+            .highlight_spacing(HighlightSpacing::Always)
     }
 
     fn input_line(&mut self) -> Paragraph {
