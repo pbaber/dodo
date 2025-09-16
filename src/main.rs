@@ -90,16 +90,32 @@ impl App {
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
-        match key.code {
-            KeyCode::Char('q') => self.should_exit = true,
-            KeyCode::Enter => {
-                self.todo_list.items.push(new_todo_item(&self.input, &String::from("nothing to see")))
-            },
-            KeyCode::Esc => self.input_mode = InputMode::Normal,
-            KeyCode::Char('i') => self.input_mode.toggle(), 
-            _ => {}
-        }
+        // match key.code {
+        //     KeyCode::Char('q') => self.should_exit = true,
+        //     KeyCode::Enter => {
+        //         self.todo_list.items.push(new_todo_item(&self.input, &String::from("nothing to see")))
+        //     },
+        //     KeyCode::Esc => self.input_mode = InputMode::Normal,
+        //     KeyCode::Char('i') => self.input_mode.toggle(), 
+        //     _ => {}
+        // }
 
+        match self.input_mode {
+            InputMode::Normal => match key.code {
+                KeyCode::Char('i') => self.input_mode.toggle(),
+                KeyCode::Char('q') => self.should_exit = true,
+                _ => {}
+            }
+            InputMode::Insert => match key.code {
+                KeyCode::Esc => self.input_mode.toggle(),
+                KeyCode::Enter => self.add_input_todo(),
+                KeyCode::Char(to_insert) => self.enter_char(to_insert),
+                KeyCode::Backspace => self.delete_char(),
+                KeyCode::Left => self.move_cursor_left(),
+                KeyCode::Right => self.move_cursor_right(),
+                _ => {}
+            }
+        }
     }
 
 }
@@ -110,6 +126,13 @@ fn new_todo_item(todo: &str, details: &str) -> TodoItem {
         details: details.to_string(),
         status: Status::Todo,
         date: Local::now().date_naive()
+    }
+}
+
+impl App {
+    fn add_input_todo(&mut self) {
+        let todo_item = new_todo_item(&self.input, "New status");
+        self.todo_list.items.push(todo_item);
     }
 }
 
