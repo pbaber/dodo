@@ -93,12 +93,6 @@ impl App {
 
     }
 
-    fn random_new_todo(&mut self) {
-        let new_item = random_new_todo_item();
-        self.todo_list.items.push(new_item);
-        let last_index = self.todo_list.items.len().saturating_sub(1);
-        self.todo_list.state.select(Some(last_index));
-    }
 }
 
 fn new_todo_item(todo: &str, details: &str) -> TodoItem {
