@@ -29,7 +29,7 @@ enum InputMode {
     Insert,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct TodoItem {
     todo: String,
     details: String,
@@ -73,9 +73,7 @@ impl Default for App {
 impl App {
     fn run(mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         while !self.should_exit {
-            terminal.draw(|f| {
-                f.render_widget(&mut self, f.area());
-            })?;
+            terminal.draw(|f| self.render(f))?;
             
             if let Some(key) = crossterm::event::read()?.as_key_press_event() {
                 self.handle_key(key);
@@ -116,8 +114,8 @@ fn random_new_todo_item() -> TodoItem {
     new_todo_item("Hi there", "Another todo")
 }
 
-impl Widget for &mut App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl App {
+    fn render(&mut self, frame: &mut ratatui::Frame) {
         let main_layout = Layout::vertical([
             Constraint::Length(1),
             Constraint::Max(self.todo_list.items.len() as u16),
@@ -132,41 +130,37 @@ impl Widget for &mut App {
         input_area, 
         blank_area, 
         bottom_area
-        ] = area.layout(&main_layout);
+    ] = frame.area().layout(&main_layout);
 
-        
+        frame.render_widget(self.title(), top_area);
+        let items_cloned = self.todo_list.items.clone();
+        let list = App::todo_list(items_cloned);
+        frame.render_stateful_widget(list, mid_area, &mut self.todo_list.state);
 
-        App::render_top(top_area, buf);
-        App::render_mid(self, mid_area, buf);
-        App::render_input_area(self, input_area, buf);
-        App::render_blank_area(self, blank_area, buf);
-        App::render_bottom(bottom_area, buf);
+
+        // App::render_mid(self, mid_area, buf);
+        // App::render_input_area(self, input_area, buf);
+        // App::render_blank_area(self, blank_area, buf);
+        // App::render_bottom(bottom_area, buf);
     }
 }
 
 impl App {
-    fn render_top(area: Rect, buf: &mut Buffer) {
+    fn title(&self) -> Paragraph {
         Paragraph::new("Here's my app")
             .bold()
             .centered()
-            .render(area, buf);
     }
 
-    fn render_mid(&mut self, area: Rect, buf: &mut Buffer) {
-        let items: Vec<ListItem> = self
-            .todo_list
-            .items
+    fn todo_list(items: Vec<TodoItem>) -> List<'static> {
+            let todo_items: Vec<ListItem> = items
             .iter()
             .map(|todo_item| {
-               ListItem::new(format!("☐ {}", todo_item.todo))
+                ListItem::new(format!("☐ {}", todo_item.todo))
             })
             .collect();
 
-
-        let list = List::new(items)
-            .block(Block::new());
-
-        StatefulWidget::render(list, area, buf, &mut self.todo_list.state);
+        return List::new(todo_items).block(Block::new())
     }
 
     fn render_input_area(&mut self, area: Rect, buf: &mut Buffer) {
