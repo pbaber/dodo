@@ -1,14 +1,11 @@
-use ratatui::layout::Constraint;
-use ratatui::layout::Layout;
-use ratatui::buffer::Buffer;
-use ratatui::layout::Rect;
+use ratatui::layout::{Layout, Constraint, Position};
 use chrono::{Local, NaiveDate};
 use crossterm::{event::{KeyCode, KeyEvent}};
 use color_eyre::Result;
 use ratatui::{DefaultTerminal};
-use ratatui::style::{Color, Modifier, Style, Stylize};
+use ratatui::style::{Stylize};
 use ratatui::widgets::{
-    Block, List, StatefulWidget, Paragraph, Widget, ListItem};
+    Block, List, Paragraph, ListItem};
 
 fn main() -> Result<(), color_eyre::Report> {
     color_eyre::install()?;
@@ -27,6 +24,15 @@ struct App {
 enum InputMode {
     Normal,
     Insert,
+}
+
+impl InputMode {
+    fn toggle(&mut self) {
+        *self = match self {
+            InputMode::Normal => InputMode::Insert,
+            InputMode::Insert => InputMode::Normal,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -88,6 +94,7 @@ impl App {
             KeyCode::Enter => {
                 self.todo_list.items.push(new_todo_item(&self.input, &String::from("nothing to see")))
             },
+            KeyCode::Char('i') => self.input_mode.toggle(), 
             _ => {}
         }
 
@@ -137,7 +144,15 @@ impl App {
         frame.render_widget(Paragraph::new(String::from("")), blank_area);
 
         frame.render_widget(self.footer(), bottom_area);
-        // App::render_bottom(bottom_area, buf);
+
+
+        match self.input_mode {
+            InputMode::Normal => {}
+            InputMode::Insert => frame.set_cursor_position(Position::new(
+                input_area.x + self.character_index as u16 + 1,
+                input_area.y + 1,
+            )),
+        }
     }
 }
 
