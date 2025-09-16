@@ -133,10 +133,12 @@ impl App {
     ] = frame.area().layout(&main_layout);
 
         frame.render_widget(self.title(), top_area);
+
         let items_cloned = self.todo_list.items.clone();
         let list = App::todo_list(items_cloned);
         frame.render_stateful_widget(list, mid_area, &mut self.todo_list.state);
 
+        frame.render_widget(self.input_line(), input_area);
 
         // App::render_mid(self, mid_area, buf);
         // App::render_input_area(self, input_area, buf);
@@ -163,10 +165,9 @@ impl App {
         return List::new(todo_items).block(Block::new())
     }
 
-    fn render_input_area(&mut self, area: Rect, buf: &mut Buffer) {
+    fn input_line(&mut self) -> Paragraph {
         Paragraph::new(self.input.clone()) 
             .block(Block::bordered())
-            .render(area, buf);
     }
 
     fn render_blank_area(&mut self, area: Rect, buf: &mut Buffer) {
