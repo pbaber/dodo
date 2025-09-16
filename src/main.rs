@@ -140,9 +140,9 @@ impl App {
 
         frame.render_widget(self.input_line(), input_area);
 
-        // App::render_mid(self, mid_area, buf);
-        // App::render_input_area(self, input_area, buf);
-        // App::render_blank_area(self, blank_area, buf);
+        frame.render_widget(Paragraph::new(String::from("")), blank_area);
+
+        frame.render_widget(self.footer(), bottom_area);
         // App::render_bottom(bottom_area, buf);
     }
 }
@@ -170,14 +170,8 @@ impl App {
             .block(Block::bordered())
     }
 
-    fn render_blank_area(&mut self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new(String::from(""))
-            .render(area, buf);
-    }
-
-    fn render_bottom(area: Rect, buf: &mut Buffer) {
+    fn footer(&mut self) -> Paragraph<'static> {
         Paragraph::new("Here's the bottom part")
             .centered()
-            .render(area, buf);
     }
 }
