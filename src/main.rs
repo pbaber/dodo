@@ -7,12 +7,40 @@ use ratatui::style::{Stylize, Color, Style, Modifier};
 use ratatui::style::palette::tailwind::{SLATE};
 use ratatui::widgets::{
     Block, List, Paragraph, ListItem, HighlightSpacing};
+use sqlx::sqlite::SqlitePool;
+use std::env;
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 
-fn main() -> Result<(), color_eyre::Report> {
+#[tokio::main]
+async fn main() -> Result<(), color_eyre::Report> {
     color_eyre::install()?;
-    ratatui::run(|terminal| App::default().run(terminal))?;
+
+    let pool = SqlitePool::connect("sqlite:todos.db").await?;
+
+    // Create the todos table if it doesn't exist
+    sqlx::query(
+        r#"
+      CREATE TABLE IF NOT EXISTS todos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          todo TEXT NOT NULL,
+          details TEXT,
+          status TEXT NOT NULL DEFAULT 'todo',
+          date TEXT NOT NULL
+      )
+      "#
+    )
+        .execute(&pool)
+    .await?;
+
+    println!("Database connected and table created successfully!");
+
+    // Only run TUI if we're in a proper terminal environment
+    match env::var("TERM") {
+        Ok(_) => ratatui::run(|terminal| App::default().run(terminal))?,
+        Err(_) => println!("Not running in a terminal, skipping TUI"),
+    }
+
     Ok(())
 }
 
