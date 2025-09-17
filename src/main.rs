@@ -237,7 +237,11 @@ impl App {
             let todo_items: Vec<ListItem> = items
             .iter()
             .map(|todo_item| {
-                ListItem::new(format!("☐ {}", todo_item.todo))
+                if todo_item.status == Status::Todo {
+                    ListItem::new(format!("✓ {}", todo_item.todo))
+                } else {
+                    ListItem::new(format!("☐ {}", todo_item.todo))
+                }
             })
             .collect();
 
