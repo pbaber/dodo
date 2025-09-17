@@ -33,9 +33,14 @@ async fn main() -> Result<(), color_eyre::Report> {
         .execute(&pool)
     .await?;
 
+    // We need to setup the app here because it's async
+    // and we can't directly use the run method with what the async
+    // function returns
+    let app = App::with_pool(pool).await?;
+
     // Only run TUI if we're in a proper terminal environment
     match env::var("TERM") {
-        Ok(_) => ratatui::run(|terminal| App::with_pool(pool).run(terminal))?,
+        Ok(_) => ratatui::run(|terminal| app.run(terminal))?,
         Err(_) => println!("Not running in a terminal, skipping TUI"),
     }
 
@@ -85,48 +90,64 @@ struct TodoList {
     state: ratatui::widgets::ListState,
 }
 
-// impl Default for App {
-//     fn default() -> Self {
-//         Self {
-//             should_exit: false,
-//             input_mode: InputMode::Normal,
-//             character_index: 0,
-//             input: String::from(""),
-//             todo_list: TodoList {
-//                 items: vec![
-//                     TodoItem {
-//                         todo: "Go outside and touch grass".to_string(),
-//                         details: "A way not to be cooked up all day".to_string(),
-//                         status: Status::Todo,
-//                         date: Local::now().date_naive(),
-//                     }
-//                 ],
-//                 state: ratatui::widgets::ListState::default(),
-//             }
-//         }
-//     }
-// }
+#[derive(sqlx::FromRow)]
+struct TodoRow {
+    todo: String,
+    details: String,
+    status: String,
+    date: String,
+}
+
 
 impl App {
-    fn with_pool(pool: SqlitePool) -> Self {
-        Self {
+    async fn with_pool(pool: SqlitePool) -> Result<Self, sqlx::Error> {
+
+        let rows = sqlx::query_as::<_, TodoRow>("SELECT todo, details, status, date FROM todos")
+            .fetch_all(&pool)
+            .await?;
+
+        let todo_items: Vec<TodoItem> = rows.into_iter().map(|row| {
+            TodoItem {
+                todo: row.todo,
+                details: row.details,
+                status: match row.status.as_str() {
+                    "completed" => Status::Completed,
+                    _ => Status::Todo,
+                },
+                date: parse_date_string(&row.date),
+            }
+        }).collect();
+
+
+        let no_todos = {
+            TodoList {
+                items: vec![
+                    TodoItem {
+                        todo: "Make a todo item".to_string(),
+                        details: "One's life always has something to do".to_string(),
+                        status: Status::Todo,
+                        date: Local::now().date_naive(),
+                    }
+                ],
+                state: ratatui::widgets::ListState::default(),
+            }
+        };
+
+        Ok(Self {
             should_exit: false,
             pool,
             input_mode: InputMode::Normal,
             character_index: 0,
             input: String::from(""),
-            todo_list: TodoList {
-                items: vec![
-                TodoItem {
-                    todo: "Go outside and touch grass".to_string(),
-                    details: "A way not to be cooked up all day".to_string(),
-                    status: Status::Todo,
-                    date: Local::now().date_naive(),
+            todo_list: if todo_items.is_empty() {
+                no_todos
+            } else {
+                TodoList {
+                    items: todo_items,
+                    state: ratatui::widgets::ListState::default(),
                 }
-                ],
-                state: ratatui::widgets::ListState::default(),
             }
-        }
+        })
     }
 }
 
@@ -198,6 +219,11 @@ impl App {
             }
         }
     }
+}
+
+fn parse_date_string(date_str: &str) -> NaiveDate {
+    NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+        .unwrap_or_else(|_| Local::now().date_naive())
 }
 
 fn new_todo_item(todo: &str, details: &str) -> TodoItem {
