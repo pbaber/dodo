@@ -33,11 +33,9 @@ async fn main() -> Result<(), color_eyre::Report> {
         .execute(&pool)
     .await?;
 
-    println!("Database connected and table created successfully!");
-
     // Only run TUI if we're in a proper terminal environment
     match env::var("TERM") {
-        Ok(_) => ratatui::run(|terminal| App::default().run(terminal))?,
+        Ok(_) => ratatui::run(|terminal| App::with_pool(pool).run(terminal))?,
         Err(_) => println!("Not running in a terminal, skipping TUI"),
     }
 
@@ -46,6 +44,7 @@ async fn main() -> Result<(), color_eyre::Report> {
 
 struct App {
     should_exit: bool,
+    pool: SqlitePool,
     todo_list: TodoList,
     input_mode: InputMode,
     character_index: usize,
@@ -86,21 +85,44 @@ struct TodoList {
     state: ratatui::widgets::ListState,
 }
 
-impl Default for App {
-    fn default() -> Self {
+// impl Default for App {
+//     fn default() -> Self {
+//         Self {
+//             should_exit: false,
+//             input_mode: InputMode::Normal,
+//             character_index: 0,
+//             input: String::from(""),
+//             todo_list: TodoList {
+//                 items: vec![
+//                     TodoItem {
+//                         todo: "Go outside and touch grass".to_string(),
+//                         details: "A way not to be cooked up all day".to_string(),
+//                         status: Status::Todo,
+//                         date: Local::now().date_naive(),
+//                     }
+//                 ],
+//                 state: ratatui::widgets::ListState::default(),
+//             }
+//         }
+//     }
+// }
+
+impl App {
+    fn with_pool(pool: SqlitePool) -> Self {
         Self {
             should_exit: false,
+            pool,
             input_mode: InputMode::Normal,
             character_index: 0,
             input: String::from(""),
             todo_list: TodoList {
                 items: vec![
-                    TodoItem {
-                        todo: "Go outside and touch grass".to_string(),
-                        details: "A way not to be cooked up all day".to_string(),
-                        status: Status::Todo,
-                        date: Local::now().date_naive(),
-                    }
+                TodoItem {
+                    todo: "Go outside and touch grass".to_string(),
+                    details: "A way not to be cooked up all day".to_string(),
+                    status: Status::Todo,
+                    date: Local::now().date_naive(),
+                }
                 ],
                 state: ratatui::widgets::ListState::default(),
             }
@@ -121,16 +143,6 @@ impl App {
     }
 
     fn handle_key(&mut self, key: KeyEvent) {
-        // match key.code {
-        //     KeyCode::Char('q') => self.should_exit = true,
-        //     KeyCode::Enter => {
-        //         self.todo_list.items.push(new_todo_item(&self.input, &String::from("nothing to see")))
-        //     },
-        //     KeyCode::Esc => self.input_mode = InputMode::Normal,
-        //     KeyCode::Char('i') => self.input_mode.toggle(), 
-        //     _ => {}
-        // }
-
         match self.input_mode {
             InputMode::Normal => match key.code {
                 KeyCode::Char('i') => self.input_mode.toggle(),
