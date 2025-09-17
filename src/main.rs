@@ -7,7 +7,8 @@ use ratatui::style::{Stylize, Color, Style, Modifier};
 use ratatui::style::palette::tailwind::{SLATE};
 use ratatui::widgets::{
     Block, List, Paragraph, ListItem, HighlightSpacing};
-use sqlx::sqlite::SqlitePool;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
+use std::str::FromStr;
 use std::env;
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
@@ -16,7 +17,8 @@ const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier:
 async fn main() -> Result<(), color_eyre::Report> {
     color_eyre::install()?;
 
-    let pool = SqlitePool::connect("sqlite:todos.db").await?;
+    let options = SqliteConnectOptions::from_str("sqlite:todos.db")?.create_if_missing(true);
+    let pool = SqlitePool::connect_with(options).await?;
 
     // Create the todos table if it doesn't exist
     sqlx::query(
