@@ -1,7 +1,7 @@
 use ratatui::layout::{Layout, Constraint, Position};
 use chrono::{Local, NaiveDate};
 use crossterm::{event::{KeyCode, KeyEvent}};
-use color_eyre::{owo_colors::OwoColorize, Result};
+use color_eyre::{Result};
 use ratatui::{DefaultTerminal};
 use ratatui::style::{Stylize, Color, Style, Modifier};
 use ratatui::style::palette::tailwind::{SLATE};
@@ -107,6 +107,14 @@ impl App {
             InputMode::Normal => match key.code {
                 KeyCode::Char('i') => self.input_mode.toggle(),
                 KeyCode::Char('q') => self.should_exit = true,
+                KeyCode::Char('h') | KeyCode::Left => self.select_none(),
+                KeyCode::Char('j') | KeyCode::Down => self.select_next(),
+                KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
+                KeyCode::Char('g') | KeyCode::Home => self.select_first(),
+                KeyCode::Char('G') | KeyCode::End => self.select_last(),
+                KeyCode::Char('l') | KeyCode::Right | KeyCode::Enter => {
+                    self.toggle_status();
+                }
                 _ => {}
             }
             InputMode::Insert => match key.code {
@@ -121,6 +129,35 @@ impl App {
         }
     }
 
+
+    const fn select_none(&mut self) {
+        self.todo_list.state.select(None);
+    }
+
+    fn select_next(&mut self) {
+        self.todo_list.state.select_next();
+    }
+    fn select_previous(&mut self) {
+        self.todo_list.state.select_previous();
+    }
+
+    const fn select_first(&mut self) {
+        self.todo_list.state.select_first();
+    }
+
+    const fn select_last(&mut self) {
+        self.todo_list.state.select_last();
+    }
+
+    /// Changes the status of the selected list item
+    fn toggle_status(&mut self) {
+        if let Some(i) = self.todo_list.state.selected() {
+            self.todo_list.items[i].status = match self.todo_list.items[i].status {
+                Status::Completed => Status::Todo,
+                Status::Todo => Status::Completed,
+            }
+        }
+    }
 }
 
 fn new_todo_item(todo: &str, details: &str) -> TodoItem {
@@ -139,10 +176,6 @@ impl App {
         self.input = String::new();
         self.character_index = 0;
     }
-}
-
-fn random_new_todo_item() -> TodoItem {
-    new_todo_item("Hi there", "Another todo")
 }
 
 impl App {
@@ -271,9 +304,5 @@ impl App {
 
     fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
         new_cursor_pos.clamp(0, self.input.chars().count())
-    }
-
-    const fn reset_cursor(&mut self) {
-        self.character_index = 0;
     }
 }
