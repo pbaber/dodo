@@ -40,7 +40,6 @@ async fn main() -> Result<(), color_eyre::Report> {
     // function returns
     let app = App::with_pool(pool).await?;
 
-
     // Only run TUI if we're in a proper terminal environment
     match env::var("TERM") {
         Ok(_) => ratatui::run(|terminal| app.run(terminal))?,
@@ -76,6 +75,7 @@ impl InputMode {
 
 #[derive(Debug, Clone)]
 struct TodoItem {
+    id: Option<i64>,
     todo: String,
     details: String,
     status: Status,
@@ -104,6 +104,7 @@ struct TodoList {
 
 #[derive(sqlx::FromRow)]
 struct TodoRow {
+    id: i64,
     todo: String,
     details: String,
     status: String,
@@ -114,12 +115,13 @@ struct TodoRow {
 impl App {
     async fn with_pool(pool: SqlitePool) -> Result<Self, sqlx::Error> {
 
-        let rows = sqlx::query_as::<_, TodoRow>("SELECT todo, details, status, date FROM todos")
+        let rows = sqlx::query_as::<_, TodoRow>("SELECT id, todo, details, status, date FROM todos")
             .fetch_all(&pool)
             .await?;
 
         let todo_items: Vec<TodoItem> = rows.into_iter().map(|row| {
             TodoItem {
+                id: Some(row.id),
                 todo: row.todo,
                 details: row.details,
                 status: match row.status.as_str() {
@@ -135,6 +137,7 @@ impl App {
             TodoList {
                 items: vec![
                     TodoItem {
+                        id: None,
                         todo: "Make a todo item".to_string(),
                         details: "One's life always has something to do".to_string(),
                         status: Status::Todo,
@@ -180,6 +183,7 @@ impl App {
             InputMode::Normal => match key.code {
                 KeyCode::Char('i') => self.input_mode.toggle(),
                 KeyCode::Char('q') => self.should_exit = true,
+                KeyCode::Char('d') => self.delete_selected_todo(),
                 KeyCode::Char('h') | KeyCode::Left => self.select_none(),
                 KeyCode::Char('j') | KeyCode::Down => self.select_next(),
                 KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
@@ -240,6 +244,7 @@ fn parse_date_string(date_str: &str) -> NaiveDate {
 
 fn new_todo_item(todo: &str, details: &str) -> TodoItem {
     TodoItem {
+        id: None,
         todo: todo.to_string(),
         details: details.to_string(),
         status: Status::Todo,
@@ -282,6 +287,48 @@ async fn write_input_to_database(pool: &SqlitePool, todo: &TodoItem) -> Result<(
     .await?;
 
     return Ok(())
+}
+
+async fn delete_todo_from_database(pool: &SqlitePool, todo: &TodoItem) -> Result<(), sqlx::Error> {
+
+    if let Some(id) = todo.id {
+        sqlx::query("DELETE FROM todos WHERE id = ?")
+            .bind(id)
+            .execute(pool)
+        .await?;
+    }
+    Ok(())
+}
+
+impl App {
+    
+    fn delete_selected_todo(&mut self) {
+        if let Some(index) = self.todo_list.state.selected() {
+            if index < self.todo_list.items.len() {
+                let todo_to_delete = self.todo_list.items[index].clone();
+                let pool = self.pool.clone();
+
+                tokio::spawn(async move {
+                    if let Err(e) = delete_todo_from_database(&pool,
+                                    &todo_to_delete).await {
+                        eprintln!("Database error deleting todo: {}", e);
+                    }
+                });
+
+                self.todo_list.items.remove(index);
+
+                if self.todo_list.items.is_empty() {
+                    self.todo_list.state.select(None);
+                } else if index >= self.todo_list.items.len() {
+                    self.todo_list.state.select(Some(self.todo_list.items.len() - 1));
+                }
+
+            }
+
+        }
+
+    }
+
 }
 
 impl App {
