@@ -40,6 +40,7 @@ async fn main() -> Result<(), color_eyre::Report> {
     // function returns
     let app = App::with_pool(pool).await?;
 
+
     // Only run TUI if we're in a proper terminal environment
     match env::var("TERM") {
         Ok(_) => ratatui::run(|terminal| app.run(terminal))?,
@@ -85,6 +86,15 @@ struct TodoItem {
 enum Status {
     Todo,
     Completed,
+}
+
+impl std::fmt::Display for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Status::Todo => write!(f, "todo"),
+            Status::Completed => write!(f, "completed"),
+        }
+    }
 }
 
 struct TodoList {
@@ -238,12 +248,40 @@ fn new_todo_item(todo: &str, details: &str) -> TodoItem {
 }
 
 impl App {
-    fn add_input_todo(&mut self) {
+    fn add_input_todo(&mut self)  {
         let todo_item = new_todo_item(&self.input, "New status");
+
+        let pool = self.pool.clone();
+        let item_for_db = todo_item.clone();
+
+        tokio::spawn(async move {
+            if let Err(e) = write_input_to_database(&pool, &item_for_db).await {
+                eprintln!("Database error: {}", e);
+            }
+        });
+
         self.todo_list.items.push(todo_item);
         self.input = String::new();
         self.character_index = 0;
     }
+
+}
+
+// TODO: Just have this run on the start in the main and see if it adds
+// if it does, we'll know there's just a problem with the implementaion
+// in add_input_todo
+async fn write_input_to_database(pool: &SqlitePool, todo: &TodoItem) -> Result<(), sqlx::Error> {
+    let query = "INSERT INTO todos (todo, details, status, date) VALUES (?, ?, ?, ?)";
+
+    sqlx::query(query)
+        .bind(&todo.todo)
+        .bind(&todo.details)
+        .bind(&todo.status.to_string())
+        .bind(&todo.date.format("%Y-%m-%d").to_string())
+        .execute(pool)
+    .await?;
+
+    return Ok(())
 }
 
 impl App {
