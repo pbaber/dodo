@@ -324,9 +324,7 @@ impl App {
                 }
 
             }
-
         }
-
     }
 
 }
@@ -391,9 +389,9 @@ impl App {
             .iter()
             .map(|todo_item| {
                 if todo_item.status == Status::Todo {
-                    ListItem::new(format!("✓ {}", todo_item.todo))
-                } else {
                     ListItem::new(format!("☐ {}", todo_item.todo))
+                } else {
+                    ListItem::new(format!("✓ {}", todo_item.todo))
                 }
             })
             .collect();
