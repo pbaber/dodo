@@ -7,8 +7,7 @@ use ratatui::style::{Stylize, Color, Style, Modifier};
 use ratatui::style::palette::tailwind::{SLATE};
 use ratatui::widgets::{
     Block, List, Paragraph, ListItem, HighlightSpacing};
-use ratatui::text::{Text, Line};
-use ratatui::widgets::Wrap;
+use ratatui::text::{Text};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 use std::str::FromStr;
 use std::env;
@@ -362,9 +361,11 @@ impl App {
 
 impl App {
     fn render(&mut self, frame: &mut ratatui::Frame) {
+        let terminal_width = frame.area().width;
+
         let main_layout = Layout::vertical([
             Constraint::Length(1),
-            Constraint::Max(self.calculate_total_display_lines() as u16),
+            Constraint::Max(self.calculate_total_display_lines(terminal_width - 2) as u16),
             Constraint::Length(3),
             Constraint::Fill(1),
             Constraint::Length(1),
@@ -381,7 +382,8 @@ impl App {
         frame.render_widget(self.title(), top_area);
 
         let items_cloned = self.todo_list.items.clone();
-        let list = App::todo_list(items_cloned);
+        // TODO: This should match the prefix length in todo_list (currently "☐ " or "✓ " = 2 chars)
+        let list = App::todo_list(items_cloned, terminal_width - 2);
         frame.render_stateful_widget(list, mid_area, &mut self.todo_list.state);
 
         frame.render_widget(self.input_line(), input_area);
@@ -415,7 +417,7 @@ impl App {
         }
     }
 
-    fn todo_list(items: Vec<TodoItem>) -> List<'static> {
+    fn todo_list(items: Vec<TodoItem>, width: u16) -> List<'static> {
             let todo_items: Vec<ListItem> = items
             .iter()
             .map(|todo_item| {
@@ -425,7 +427,7 @@ impl App {
                     format!("✓ {}", todo_item.todo)
                 };
 
-                let wrapped_lines = wrap_text(&content, 100);
+                let wrapped_lines = wrap_text(&content, width as usize);
                 let text = Text::from(wrapped_lines.join("\n"));
                 ListItem::new(text)
 
@@ -439,7 +441,7 @@ impl App {
             .highlight_spacing(HighlightSpacing::Always)
     }
 
-    fn calculate_total_display_lines(&self) -> usize {
+    fn calculate_total_display_lines(&self, width: u16) -> usize {
         self.todo_list.items
             .iter()
             .map(|todo_item| {
@@ -448,7 +450,7 @@ impl App {
                 } else {
                     format!("✓ {}", todo_item.todo)
                 };
-                wrap_text(&content, 100).len()
+                wrap_text(&content, width as usize).len()
             })
             .sum()
 
