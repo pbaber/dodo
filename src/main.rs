@@ -228,12 +228,24 @@ impl App {
 
     /// Changes the status of the selected list item
     fn toggle_status(&mut self) {
-        if let Some(i) = self.todo_list.state.selected() {
-            self.todo_list.items[i].status = match self.todo_list.items[i].status {
-                Status::Completed => Status::Todo,
-                Status::Todo => Status::Completed,
+
+        let Some(index) = self.todo_list.state.selected() else { return };
+        let Some(todo) = self.todo_list.items.get(index) else { return };
+
+        let pool = self.pool.clone();
+        let todo_id = todo.id;
+
+        self.todo_list.items[index].status = match todo.status {
+            Status::Completed => Status::Todo,
+            Status::Todo => Status::Completed,
+        };
+
+        tokio::spawn(async move {
+            if let Err(e) = toggle_todo_status_in_database(&pool, todo_id).await {
+                eprintln!("Database error toggling status: {}", e);
             }
-        }
+        });
+
     }
 }
 
@@ -272,9 +284,7 @@ impl App {
 
 }
 
-// TODO: Just have this run on the start in the main and see if it adds
-// if it does, we'll know there's just a problem with the implementaion
-// in add_input_todo
+// Database
 async fn write_input_to_database(pool: &SqlitePool, todo: &TodoItem) -> Result<(), sqlx::Error> {
     let query = "INSERT INTO todos (todo, details, status, date) VALUES (?, ?, ?, ?)";
 
@@ -297,6 +307,24 @@ async fn delete_todo_from_database(pool: &SqlitePool, todo: &TodoItem) -> Result
             .execute(pool)
         .await?;
     }
+    Ok(())
+}
+
+async fn toggle_todo_status_in_database(pool: &SqlitePool, todo_id: Option<i64>) -> Result<(), sqlx::Error> {
+    if let Some(id) = todo_id {
+        sqlx::query(
+       r#"
+        UPDATE todos SET status = CASE
+        WHEN status = 'todo' THEN 'completed'
+        WHEN status = 'completed' THEN 'todo'
+        ELSE 'todo'
+        END WHERE id = ?
+        "#)
+            .bind(id)
+            .execute(pool)
+            .await?;
+    }
+
     Ok(())
 }
 
