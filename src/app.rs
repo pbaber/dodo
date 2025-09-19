@@ -15,7 +15,9 @@ pub struct App {
     pub input: String,
 }
 
+// Public API - Core Application Interface
 impl App {
+    /// Creates a new App instance with database connection and loads existing todos
     pub async fn with_pool(pool: SqlitePool) -> Result<Self, sqlx::Error> {
         let rows = sqlx::query_as::<_, TodoRow>("SELECT id, todo, details, status, date FROM todos")
             .fetch_all(&pool)
@@ -65,9 +67,8 @@ impl App {
             }
         })
     }
-}
 
-impl App {
+    /// Main application loop that handles rendering and input
     pub fn run(mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         while !self.should_exit {
             terminal.draw(|f| crate::ui::render_impl(&mut self, f))?;
@@ -79,6 +80,7 @@ impl App {
         Ok(())
     }
 
+    /// Handles keyboard input and routes to appropriate actions
     pub fn handle_key(&mut self, key: KeyEvent) {
         match self.input_mode {
             InputMode::Normal => match key.code {
@@ -107,6 +109,7 @@ impl App {
         }
     }
 
+    /// Selection methods for navigating the todo list
     pub fn select_none(&mut self) {
         self.todo_list.state.select(None);
     }
@@ -126,7 +129,10 @@ impl App {
     pub fn select_last(&mut self) {
         self.todo_list.state.select_last();
     }
+}
 
+// Business Logic - Core Todo Operations
+impl App {
     /// Changes the status of the selected list item
     pub fn toggle_status(&mut self) {
         let Some(index) = self.todo_list.state.selected() else { return };
@@ -146,9 +152,8 @@ impl App {
             }
         });
     }
-}
 
-impl App {
+    /// Adds a new todo item from user input
     pub fn add_input_todo(&mut self) {
         let todo_item = new_todo_item(&self.input, "New status");
 
@@ -165,9 +170,8 @@ impl App {
         self.input = String::new();
         self.character_index = 0;
     }
-}
 
-impl App {
+    /// Deletes the currently selected todo item
     pub fn delete_selected_todo(&mut self) {
         if let Some(index) = self.todo_list.state.selected() {
             if index < self.todo_list.items.len() {
@@ -193,31 +197,28 @@ impl App {
     }
 }
 
+// Low-level Utilities - Input handling and cursor management
 impl App {
+    /// Moves cursor left one position
     pub fn move_cursor_left(&mut self) {
         let cursor_moved_left = self.character_index.saturating_sub(1);
         self.character_index = self.clamp_cursor(cursor_moved_left);
     }
 
+    /// Moves cursor right one position
     pub fn move_cursor_right(&mut self) {
         let cursor_moved_right = self.character_index.saturating_add(1);
         self.character_index = self.clamp_cursor(cursor_moved_right);
     }
 
+    /// Inserts a character at the current cursor position
     pub fn enter_char(&mut self, new_char: char) {
         let index = self.byte_index();
         self.input.insert(index, new_char);
         self.move_cursor_right();
     }
 
-    fn byte_index(&self) -> usize {
-        self.input
-            .char_indices()
-            .map(|(i, _)| i)
-            .nth(self.character_index)
-            .unwrap_or(self.input.len())
-    }
-
+    /// Deletes the character before the cursor
     pub fn delete_char(&mut self) {
         let is_not_cursor_leftmost = self.character_index != 0;
         if is_not_cursor_leftmost {
@@ -235,6 +236,16 @@ impl App {
         }
     }
 
+    /// Gets the byte index for the current character position
+    fn byte_index(&self) -> usize {
+        self.input
+            .char_indices()
+            .map(|(i, _)| i)
+            .nth(self.character_index)
+            .unwrap_or(self.input.len())
+    }
+
+    /// Ensures cursor position stays within valid bounds
     fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
         new_cursor_pos.clamp(0, self.input.chars().count())
     }
