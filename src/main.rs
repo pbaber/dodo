@@ -19,9 +19,6 @@ async fn main() -> Result<(), color_eyre::Report> {
     // Create the todos table if it doesn't exist
     crate::db::create_todos_table(&pool).await?;
 
-    // We need to setup the app here because it's async
-    // and we can't directly use the run method with what the async
-    // function returns
     let app = crate::app::App::with_pool(pool).await?;
 
     // Only run TUI if we're in a proper terminal environment
