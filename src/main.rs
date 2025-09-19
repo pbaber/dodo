@@ -10,6 +10,7 @@ use crate::models::{TodoList, TodoItem, Status, InputMode, TodoRow, parse_date_s
 
 mod ui;
 mod models;
+mod db;
 
 #[tokio::main]
 async fn main() -> Result<(), color_eyre::Report> {
@@ -19,19 +20,7 @@ async fn main() -> Result<(), color_eyre::Report> {
     let pool = SqlitePool::connect_with(options).await?;
 
     // Create the todos table if it doesn't exist
-    sqlx::query(
-        r#"
-      CREATE TABLE IF NOT EXISTS todos (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          todo TEXT NOT NULL,
-          details TEXT,
-          status TEXT NOT NULL DEFAULT 'todo',
-          date TEXT NOT NULL
-      )
-      "#
-    )
-        .execute(&pool)
-    .await?;
+    crate::db::create_todos_table(&pool).await?;
 
     // We need to setup the app here because it's async
     // and we can't directly use the run method with what the async
@@ -198,7 +187,7 @@ impl App {
         };
 
         tokio::spawn(async move {
-            if let Err(e) = toggle_todo_status_in_database(&pool, todo_id).await {
+            if let Err(e) = crate::db::toggle_todo_status_in_database(&pool, todo_id).await {
                 eprintln!("Database error toggling status: {}", e);
             }
         });
@@ -216,7 +205,7 @@ impl App {
         let item_for_db = todo_item.clone();
 
         tokio::spawn(async move {
-            if let Err(e) = write_input_to_database(&pool, &item_for_db).await {
+            if let Err(e) = crate::db::write_input_to_database(&pool, &item_for_db).await {
                 eprintln!("Database error: {}", e);
             }
         });
@@ -228,49 +217,6 @@ impl App {
 
 }
 
-// Database
-async fn write_input_to_database(pool: &SqlitePool, todo: &TodoItem) -> Result<(), sqlx::Error> {
-    let query = "INSERT INTO todos (todo, details, status, date) VALUES (?, ?, ?, ?)";
-
-    sqlx::query(query)
-        .bind(&todo.todo)
-        .bind(&todo.details)
-        .bind(&todo.status.to_string())
-        .bind(&todo.date.format("%Y-%m-%d").to_string())
-        .execute(pool)
-    .await?;
-
-    return Ok(())
-}
-
-async fn delete_todo_from_database(pool: &SqlitePool, todo: &TodoItem) -> Result<(), sqlx::Error> {
-
-    if let Some(id) = todo.id {
-        sqlx::query("DELETE FROM todos WHERE id = ?")
-            .bind(id)
-            .execute(pool)
-        .await?;
-    }
-    Ok(())
-}
-
-async fn toggle_todo_status_in_database(pool: &SqlitePool, todo_id: Option<i64>) -> Result<(), sqlx::Error> {
-    if let Some(id) = todo_id {
-        sqlx::query(
-       r#"
-        UPDATE todos SET status = CASE
-        WHEN status = 'todo' THEN 'completed'
-        WHEN status = 'completed' THEN 'todo'
-        ELSE 'todo'
-        END WHERE id = ?
-        "#)
-            .bind(id)
-            .execute(pool)
-            .await?;
-    }
-
-    Ok(())
-}
 
 impl App {
     
@@ -281,7 +227,7 @@ impl App {
                 let pool = self.pool.clone();
 
                 tokio::spawn(async move {
-                    if let Err(e) = delete_todo_from_database(&pool,
+                    if let Err(e) = crate::db::delete_todo_from_database(&pool,
                                     &todo_to_delete).await {
                         eprintln!("Database error deleting todo: {}", e);
                     }
