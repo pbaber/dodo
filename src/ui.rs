@@ -6,9 +6,7 @@ use ratatui::text::{Text};
 use ratatui::style::palette::tailwind::{SLATE};
 
 use super::App;
-use super:: InputMode;
-use super::TodoItem;
-use super::Status;
+use crate::models::*;
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 

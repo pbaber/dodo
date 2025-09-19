@@ -1,19 +1,15 @@
-use ratatui::layout::{Layout, Constraint, Position};
-use chrono::{Local, NaiveDate};
+use chrono::Local;
 use crossterm::{event::{KeyCode, KeyEvent}};
 use color_eyre::{Result};
 use ratatui::{DefaultTerminal};
-use ratatui::style::{Stylize, Color, Style, Modifier};
-use ratatui::widgets::{
-    Block, List, Paragraph, ListItem, HighlightSpacing};
-use ratatui::text::{Text};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 use std::str::FromStr;
 use std::env;
-use textwrap;
+use crate::models::{TodoList, TodoItem, Status, InputMode, TodoRow, parse_date_string, new_todo_item};
 
 
 mod ui;
+mod models;
 
 #[tokio::main]
 async fn main() -> Result<(), color_eyre::Report> {
@@ -60,35 +56,7 @@ struct App {
     input: String,
 }
 
-#[derive(PartialEq)]
-enum InputMode {
-    Normal,
-    Insert,
-}
 
-impl InputMode {
-    fn toggle(&mut self) {
-        *self = match self {
-            InputMode::Normal => InputMode::Insert,
-            InputMode::Insert => InputMode::Normal,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-struct TodoItem {
-    id: Option<i64>,
-    todo: String,
-    details: String,
-    status: Status,
-    date: NaiveDate
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Status {
-    Todo,
-    Completed,
-}
 
 impl std::fmt::Display for Status {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -99,19 +67,6 @@ impl std::fmt::Display for Status {
     }
 }
 
-struct TodoList {
-    items: Vec<TodoItem>,
-    state: ratatui::widgets::ListState,
-}
-
-#[derive(sqlx::FromRow)]
-struct TodoRow {
-    id: i64,
-    todo: String,
-    details: String,
-    status: String,
-    date: String,
-}
 
 
 impl App {
@@ -251,20 +206,7 @@ impl App {
     }
 }
 
-fn parse_date_string(date_str: &str) -> NaiveDate {
-    NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-        .unwrap_or_else(|_| Local::now().date_naive())
-}
 
-fn new_todo_item(todo: &str, details: &str) -> TodoItem {
-    TodoItem {
-        id: None,
-        todo: todo.to_string(),
-        details: details.to_string(),
-        status: Status::Todo,
-        date: Local::now().date_naive()
-    }
-}
 
 impl App {
     fn add_input_todo(&mut self)  {
