@@ -1,10 +1,12 @@
 use chrono::Local;
-use crossterm::{event::{KeyCode, KeyEvent}};
-use color_eyre::{Result};
+use color_eyre::Result;
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{DefaultTerminal, widgets::ListState};
-use sqlx::sqlite::{SqlitePool};
+use sqlx::sqlite::SqlitePool;
 
-use crate::models::{TodoList, TodoItem, Status, InputMode, TodoRow, parse_date_string, new_todo_item};
+use crate::models::{
+    InputMode, Status, TodoItem, TodoList, TodoRow, new_todo_item, parse_date_string,
+};
 
 pub struct App {
     pub should_exit: bool,
@@ -19,12 +21,15 @@ pub struct App {
 impl App {
     /// Creates a new App instance with database connection and loads existing todos
     pub async fn with_pool(pool: SqlitePool) -> Result<Self, sqlx::Error> {
-        let rows = sqlx::query_as::<_, TodoRow>("SELECT id, todo, details, status, date FROM todos")
-            .fetch_all(&pool)
-            .await?;
+        let rows = sqlx::query_as::<_, TodoRow>(
+            "SELECT id, todo, details, status, date, sort_order FROM todos ORDER BY sort_order",
+        )
+        .fetch_all(&pool)
+        .await?;
 
-        let todo_items: Vec<TodoItem> = rows.into_iter().map(|row| {
-            TodoItem {
+        let todo_items: Vec<TodoItem> = rows
+            .into_iter()
+            .map(|row| TodoItem {
                 id: Some(row.id),
                 todo: row.todo,
                 details: row.details,
@@ -33,20 +38,20 @@ impl App {
                     _ => Status::Todo,
                 },
                 date: parse_date_string(&row.date),
-            }
-        }).collect();
+                sort_order: row.sort_order,
+            })
+            .collect();
 
         let no_todos = {
             TodoList {
-                items: vec![
-                    TodoItem {
-                        id: None,
-                        todo: "Make a todo item".to_string(),
-                        details: "One's life always has something to do".to_string(),
-                        status: Status::Todo,
-                        date: Local::now().date_naive(),
-                    }
-                ],
+                items: vec![TodoItem {
+                    id: None,
+                    todo: "Make a todo item".to_string(),
+                    details: "One's life always has something to do".to_string(),
+                    status: Status::Todo,
+                    date: Local::now().date_naive(),
+                    sort_order: 0,
+                }],
                 state: ListState::default(),
             }
         };
@@ -64,7 +69,7 @@ impl App {
                     items: todo_items,
                     state: ListState::default(),
                 }
-            }
+            },
         })
     }
 
@@ -72,7 +77,7 @@ impl App {
     pub fn run(mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         while !self.should_exit {
             terminal.draw(|f| crate::ui::render_impl(&mut self, f))?;
-            
+
             if let Some(key) = crossterm::event::read()?.as_key_press_event() {
                 self.handle_key(key);
             }
@@ -92,11 +97,13 @@ impl App {
                 KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
                 KeyCode::Char('g') | KeyCode::Home => self.select_first(),
                 KeyCode::Char('G') | KeyCode::End => self.select_last(),
+                KeyCode::Char('J') => self.move_todo_down(),
+                KeyCode::Char('K') => self.move_todo_up(),
                 KeyCode::Char('l') | KeyCode::Right | KeyCode::Enter => {
                     self.toggle_status();
                 }
                 _ => {}
-            }
+            },
             InputMode::Insert => match key.code {
                 KeyCode::Esc => self.input_mode.toggle(),
                 KeyCode::Enter => self.add_input_todo(),
@@ -105,8 +112,65 @@ impl App {
                 KeyCode::Left => self.move_cursor_left(),
                 KeyCode::Right => self.move_cursor_right(),
                 _ => {}
+            },
+        }
+    }
+
+    pub fn move_todo_up(&mut self) {
+        if let Some(index) = self.todo_list.state.selected() {
+            if index > 0 && index < self.todo_list.items.len() {
+                // Swap sort_orders between current and previous item
+                let current_order = self.todo_list.items[index].sort_order;
+                let prev_order = self.todo_list.items[index - 1].sort_order;
+
+                self.todo_list.items[index].sort_order = prev_order;
+                self.todo_list.items[index - 1].sort_order = current_order;
+
+                // Swap items in the list
+                self.todo_list.items.swap(index, index - 1);
+                self.todo_list.state.select(Some(index - 1));
+
+                // Update database
+                self.update_sort_orders_in_db();
             }
         }
+    }
+
+    pub fn move_todo_down(&mut self) {
+        if let Some(index) = self.todo_list.state.selected() {
+            if index < self.todo_list.items.len() - 1 {
+                // Swap sort_orders between current and next item
+                let current_order = self.todo_list.items[index].sort_order;
+                let next_order = self.todo_list.items[index + 1].sort_order;
+
+                self.todo_list.items[index].sort_order = next_order;
+                self.todo_list.items[index + 1].sort_order = current_order;
+
+                // Swap items in the list
+                self.todo_list.items.swap(index, index + 1);
+                self.todo_list.state.select(Some(index + 1));
+
+                // Update database
+                self.update_sort_orders_in_db();
+            }
+        }
+    }
+
+    fn update_sort_orders_in_db(&self) {
+        let pool = self.pool.clone();
+        let items = self.todo_list.items.clone();
+
+        tokio::spawn(async move {
+            for item in items {
+                if let Some(id) = item.id {
+                    if let Err(e) =
+                        crate::db::update_todo_sort_order(&pool, id, item.sort_order).await
+                    {
+                        eprintln!("Database error updating sort order: {}", e);
+                    }
+                }
+            }
+        });
     }
 
     /// Selection methods for navigating the todo list
@@ -117,7 +181,7 @@ impl App {
     pub fn select_next(&mut self) {
         self.todo_list.state.select_next();
     }
-    
+
     pub fn select_previous(&mut self) {
         self.todo_list.state.select_previous();
     }
@@ -135,8 +199,12 @@ impl App {
 impl App {
     /// Changes the status of the selected list item
     pub fn toggle_status(&mut self) {
-        let Some(index) = self.todo_list.state.selected() else { return };
-        let Some(todo) = self.todo_list.items.get(index) else { return };
+        let Some(index) = self.todo_list.state.selected() else {
+            return;
+        };
+        let Some(todo) = self.todo_list.items.get(index) else {
+            return;
+        };
 
         let pool = self.pool.clone();
         let todo_id = todo.id;
@@ -155,7 +223,17 @@ impl App {
 
     /// Adds a new todo item from user input
     pub fn add_input_todo(&mut self) {
-        let todo_item = new_todo_item(&self.input, "New status");
+        let next_sort_order = self
+            .todo_list
+            .items
+            .iter()
+            .map(|item| item.sort_order)
+            .max()
+            .unwrap_or(0)
+            + 10;
+
+        let mut todo_item = new_todo_item(&self.input, "New Status");
+        todo_item.sort_order = next_sort_order;
 
         let pool = self.pool.clone();
         let item_for_db = todo_item.clone();
@@ -179,8 +257,9 @@ impl App {
                 let pool = self.pool.clone();
 
                 tokio::spawn(async move {
-                    if let Err(e) = crate::db::delete_todo_from_database(&pool,
-                                    &todo_to_delete).await {
+                    if let Err(e) =
+                        crate::db::delete_todo_from_database(&pool, &todo_to_delete).await
+                    {
                         eprintln!("Database error deleting todo: {}", e);
                     }
                 });
@@ -190,7 +269,9 @@ impl App {
                 if self.todo_list.items.is_empty() {
                     self.todo_list.state.select(None);
                 } else if index >= self.todo_list.items.len() {
-                    self.todo_list.state.select(Some(self.todo_list.items.len() - 1));
+                    self.todo_list
+                        .state
+                        .select(Some(self.todo_list.items.len() - 1));
                 }
             }
         }
@@ -250,3 +331,4 @@ impl App {
         new_cursor_pos.clamp(0, self.input.chars().count())
     }
 }
+

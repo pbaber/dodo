@@ -1,13 +1,12 @@
-use color_eyre::{Result};
+use color_eyre::Result;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 use std::env;
 use std::str::FromStr;
-use ratatui;
 
-mod ui;
-mod models;
-mod db;
 mod app;
+mod db;
+mod models;
+mod ui;
 
 #[tokio::main]
 async fn main() -> Result<(), color_eyre::Report> {

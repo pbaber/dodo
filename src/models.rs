@@ -1,6 +1,5 @@
 use chrono::{Local, NaiveDate};
 
-
 #[derive(PartialEq)]
 pub enum InputMode {
     Normal,
@@ -22,7 +21,8 @@ pub struct TodoItem {
     pub todo: String,
     pub details: String,
     pub status: Status,
-    pub date: NaiveDate
+    pub date: NaiveDate,
+    pub sort_order: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -40,7 +40,6 @@ impl std::fmt::Display for Status {
     }
 }
 
-
 pub struct TodoList {
     pub items: Vec<TodoItem>,
     pub state: ratatui::widgets::ListState,
@@ -53,13 +52,12 @@ pub struct TodoRow {
     pub details: String,
     pub status: String,
     pub date: String,
+    pub sort_order: i32,
 }
 
 pub fn parse_date_string(date_str: &str) -> NaiveDate {
-    NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-        .unwrap_or_else(|_| Local::now().date_naive())
+    NaiveDate::parse_from_str(date_str, "%Y-%m-%d").unwrap_or_else(|_| Local::now().date_naive())
 }
-
 
 pub fn new_todo_item(todo: &str, details: &str) -> TodoItem {
     TodoItem {
@@ -67,6 +65,7 @@ pub fn new_todo_item(todo: &str, details: &str) -> TodoItem {
         todo: todo.to_string(),
         details: details.to_string(),
         status: Status::Todo,
-        date: Local::now().date_naive()
+        date: Local::now().date_naive(),
+        sort_order: 0,
     }
 }
