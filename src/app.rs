@@ -22,7 +22,7 @@ impl App {
     /// Creates a new App instance with database connection and loads existing todos
     pub async fn with_pool(pool: SqlitePool) -> Result<Self, sqlx::Error> {
         let rows = sqlx::query_as::<_, TodoRow>(
-            "SELECT id, todo, details, status, date, sort_order FROM todos ORDER BY sort_order",
+            "SELECT id, todo, details, status, completed_at, date, sort_order FROM todos ORDER BY sort_order",
         )
         .fetch_all(&pool)
         .await?;
@@ -37,6 +37,11 @@ impl App {
                     "completed" => Status::Completed,
                     _ => Status::Todo,
                 },
+                completed_at: if row.completed_at.is_empty() {
+                    None
+                } else {
+                    Some(parse_date_string(&row.completed_at))
+                },
                 date: parse_date_string(&row.date),
                 sort_order: row.sort_order,
             })
@@ -49,6 +54,7 @@ impl App {
                     todo: "Make a todo item".to_string(),
                     details: "One's life always has something to do".to_string(),
                     status: Status::Todo,
+                    completed_at: None,
                     date: Local::now().date_naive(),
                     sort_order: 0,
                 }],
@@ -210,12 +216,22 @@ impl App {
         let todo_id = todo.id;
 
         self.todo_list.items[index].status = match todo.status {
-            Status::Completed => Status::Todo,
-            Status::Todo => Status::Completed,
+            Status::Completed => {
+                self.todo_list.items[index].completed_at = None;
+                Status::Todo
+            }
+            Status::Todo => {
+                self.todo_list.items[index].completed_at = Some(Local::now().date_naive());
+                Status::Completed
+            }
         };
 
+        let todo_item = self.todo_list.items[index].clone();
+
         tokio::spawn(async move {
-            if let Err(e) = crate::db::toggle_todo_status_in_database(&pool, todo_id).await {
+            if let Err(e) =
+                crate::db::toggle_todo_status_in_database(&pool, todo_id, &todo_item).await
+            {
                 eprintln!("Database error toggling status: {}", e);
             }
         });
@@ -331,4 +347,3 @@ impl App {
         new_cursor_pos.clamp(0, self.input.chars().count())
     }
 }
-

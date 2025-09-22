@@ -1,4 +1,5 @@
 use crate::models::TodoItem;
+use chrono::Local;
 use sqlx::sqlite::SqlitePool;
 
 pub async fn create_todos_table(pool: &SqlitePool) -> Result<(), sqlx::Error> {
@@ -10,6 +11,7 @@ pub async fn create_todos_table(pool: &SqlitePool) -> Result<(), sqlx::Error> {
           details TEXT,
           status TEXT NOT NULL DEFAULT 'todo',
           date TEXT NOT NULL,
+          completed_at TEXT NULL,
           sort_order INTEGER NOT NULL DEFAULT 0
       )
       "#,
@@ -23,14 +25,14 @@ pub async fn write_input_to_database(
     pool: &SqlitePool,
     todo: &TodoItem,
 ) -> Result<(), sqlx::Error> {
-    let query =
-        "INSERT INTO todos (todo, details, status, date, sort_order) VALUES (?, ?, ?, ?, ?)";
+    let query = "INSERT INTO todos (todo, details, status, date, completed_at, sort_order) VALUES (?, ?, ?, ?, ?, ?)";
 
     sqlx::query(query)
         .bind(&todo.todo)
         .bind(&todo.details)
         .bind(&todo.status.to_string())
         .bind(&todo.date.format("%Y-%m-%d").to_string())
+        .bind(&todo.completed_at.map(|d| d.format("%Y-%m-%d").to_string()))
         .bind(&todo.sort_order)
         .execute(pool)
         .await?;
@@ -68,16 +70,37 @@ pub async fn update_todo_sort_order(
 pub async fn toggle_todo_status_in_database(
     pool: &SqlitePool,
     todo_id: Option<i64>,
+    todo_item: &TodoItem,
 ) -> Result<(), sqlx::Error> {
     if let Some(id) = todo_id {
+        // Get our hands on the acutal todo
+        // let todo = sqlx::query_as::<_, crate::models::TodoRow>(
+        //     "SELECT id, todo, details, status, completed_at, date, sort_order FROM todos WHERE id = ?"
+        // )
+        //     .bind(id)
+        //     .fetch_one(pool)
+        // .await?;
+
         sqlx::query(
             r#"
-        UPDATE todos SET status = CASE
-        WHEN status = 'todo' THEN 'completed'
-        WHEN status = 'completed' THEN 'todo'
-        ELSE 'todo'
-        END WHERE id = ?
+        UPDATE todos SET 
+            status = CASE
+                WHEN status = 'todo' THEN 'completed'
+                WHEN status = 'completed' THEN 'todo'
+                ELSE 'todo'
+            END,
+            completed_at = CASE
+                WHEN status = 'todo' THEN ?
+                WHEN status = 'completed' THEN NULL
+                ELSE NULL
+            END
+        WHERE id = ?
         "#,
+        )
+        .bind(
+            todo_item
+                .completed_at
+                .map(|d| d.format("%Y-%m-%d").to_string()),
         )
         .bind(id)
         .execute(pool)
@@ -85,4 +108,3 @@ pub async fn toggle_todo_status_in_database(
     }
     Ok(())
 }
-

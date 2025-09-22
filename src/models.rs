@@ -21,6 +21,7 @@ pub struct TodoItem {
     pub todo: String,
     pub details: String,
     pub status: Status,
+    pub completed_at: Option<NaiveDate>,
     pub date: NaiveDate,
     pub sort_order: i32,
 }
@@ -51,6 +52,7 @@ pub struct TodoRow {
     pub todo: String,
     pub details: String,
     pub status: String,
+    pub completed_at: String,
     pub date: String,
     pub sort_order: i32,
 }
@@ -65,6 +67,7 @@ pub fn new_todo_item(todo: &str, details: &str) -> TodoItem {
         todo: todo.to_string(),
         details: details.to_string(),
         status: Status::Todo,
+        completed_at: None,
         date: Local::now().date_naive(),
         sort_order: 0,
     }
