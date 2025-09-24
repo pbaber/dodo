@@ -1,5 +1,4 @@
 use crate::models::TodoItem;
-use chrono::Local;
 use sqlx::sqlite::SqlitePool;
 
 pub async fn create_todos_table(pool: &SqlitePool) -> Result<(), sqlx::Error> {
