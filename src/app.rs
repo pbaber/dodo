@@ -4,9 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{DefaultTerminal, widgets::ListState};
 use sqlx::sqlite::SqlitePool;
 
-use crate::models::{
-    InputMode, Status, TodoItem, TodoList, TodoRow, new_todo_item, parse_date_string,
-};
+use crate::models::{InputMode, TodoItem, TodoList, TodoRow, new_todo_item, parse_date_string};
 
 pub struct App {
     pub should_exit: bool,
@@ -22,7 +20,7 @@ impl App {
     /// Creates a new App instance with database connection and loads existing todos
     pub async fn with_pool(pool: SqlitePool) -> Result<Self, sqlx::Error> {
         let rows = sqlx::query_as::<_, TodoRow>(
-            "SELECT id, todo, details, status, completed_at, date, sort_order FROM todos ORDER BY sort_order",
+            "SELECT id, todo, details, completed_at, date, sort_order FROM todos ORDER BY sort_order",
         )
         .fetch_all(&pool)
         .await?;
@@ -33,10 +31,6 @@ impl App {
                 id: Some(row.id),
                 todo: row.todo,
                 details: row.details,
-                status: match row.status.as_str() {
-                    "completed" => Status::Completed,
-                    _ => Status::Todo,
-                },
                 completed_at: if row.completed_at.is_empty() {
                     None
                 } else {
@@ -53,7 +47,6 @@ impl App {
                     id: None,
                     todo: "Make a todo item".to_string(),
                     details: "One's life always has something to do".to_string(),
-                    status: Status::Todo,
                     completed_at: None,
                     date: Local::now().date_naive(),
                     sort_order: 0,
@@ -215,16 +208,12 @@ impl App {
         let pool = self.pool.clone();
         let todo_id = todo.id;
 
-        self.todo_list.items[index].status = match todo.status {
-            Status::Completed => {
-                self.todo_list.items[index].completed_at = None;
-                Status::Todo
-            }
-            Status::Todo => {
-                self.todo_list.items[index].completed_at = Some(Local::now().date_naive());
-                Status::Completed
-            }
-        };
+        self.todo_list.items[index].completed_at =
+            if self.todo_list.items[index].completed_at.is_some() {
+                None
+            } else {
+                Some(Local::now().date_naive())
+            };
 
         let todo_item = self.todo_list.items[index].clone();
 
