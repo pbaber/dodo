@@ -10,6 +10,7 @@ pub async fn create_todos_table(pool: &SqlitePool) -> Result<(), sqlx::Error> {
           details TEXT,
           date TEXT NOT NULL,
           completed_at TEXT NULL,
+          parent_id INTEGER REFERENCES todos(id),
           sort_order INTEGER NOT NULL DEFAULT 0
       )
       "#,
@@ -23,14 +24,14 @@ pub async fn write_input_to_database(
     pool: &SqlitePool,
     todo: &TodoItem,
 ) -> Result<(), sqlx::Error> {
-    let query =
-        "INSERT INTO todos (todo, details, date, completed_at, sort_order) VALUES (?, ?, ?, ?, ?)";
+    let query = "INSERT INTO todos (todo, details, date, completed_at, parent_id, sort_order) VALUES (?, ?, ?, ?, ?, ?)";
 
     sqlx::query(query)
         .bind(&todo.todo)
         .bind(&todo.details)
         .bind(&todo.date.format("%Y-%m-%d").to_string())
         .bind(&todo.completed_at.map(|d| d.format("%Y-%m-%d").to_string()))
+        .bind(&todo.parent_id)
         .bind(&todo.sort_order)
         .execute(pool)
         .await?;

@@ -12,6 +12,7 @@ pub struct App {
     pub todo_list: TodoList,
     pub input_mode: InputMode,
     pub character_index: usize,
+    pub creating_child_todo: bool,
     pub input: String,
 }
 
@@ -20,7 +21,7 @@ impl App {
     /// Creates a new App instance with database connection and loads existing todos
     pub async fn with_pool(pool: SqlitePool) -> Result<Self, sqlx::Error> {
         let rows = sqlx::query_as::<_, TodoRow>(
-            "SELECT id, todo, details, completed_at, date, sort_order FROM todos ORDER BY sort_order",
+            "SELECT id, todo, details, completed_at, date, parent_id, sort_order FROM todos ORDER BY sort_order",
         )
         .fetch_all(&pool)
         .await?;
@@ -37,6 +38,7 @@ impl App {
                     Some(parse_date_string(&row.completed_at))
                 },
                 date: parse_date_string(&row.date),
+                parent_id: row.parent_id,
                 sort_order: row.sort_order,
             })
             .collect();
@@ -49,6 +51,7 @@ impl App {
                     details: "One's life always has something to do".to_string(),
                     completed_at: None,
                     date: Local::now().date_naive(),
+                    parent_id: None,
                     sort_order: 0,
                 }],
                 state: ListState::default(),
@@ -61,6 +64,7 @@ impl App {
             input_mode: InputMode::Normal,
             character_index: 0,
             input: String::from(""),
+            creating_child_todo: false,
             todo_list: if todo_items.is_empty() {
                 no_todos
             } else {
@@ -89,6 +93,14 @@ impl App {
         match self.input_mode {
             InputMode::Normal => match key.code {
                 KeyCode::Char('i') => self.input_mode.toggle(),
+                KeyCode::Char('o') => {
+                    self.creating_child_todo = false;
+                    self.input_mode.toggle();
+                }
+                KeyCode::Char('O') => {
+                    self.creating_child_todo = true;
+                    self.input_mode.toggle();
+                }
                 KeyCode::Char('q') => self.should_exit = true,
                 KeyCode::Char('d') => self.delete_selected_todo(),
                 KeyCode::Char('h') | KeyCode::Left => self.select_none(),
@@ -237,7 +249,17 @@ impl App {
             .unwrap_or(0)
             + 10;
 
-        let mut todo_item = new_todo_item(&self.input, "New Status");
+        let parent_id = if self.creating_child_todo {
+            self.todo_list
+                .state
+                .selected()
+                .and_then(|index| self.todo_list.items.get(index))
+                .and_then(|item| item.id)
+        } else {
+            None
+        };
+
+        let mut todo_item = new_todo_item(&self.input, "New Status", parent_id);
         todo_item.sort_order = next_sort_order;
 
         let pool = self.pool.clone();
