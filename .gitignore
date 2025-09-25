@@ -1,5 +1,6 @@
 /target
 todos.db
+todos.db.bak
 
 
 # Added by cargo
