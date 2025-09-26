@@ -4,7 +4,10 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{DefaultTerminal, widgets::ListState};
 use sqlx::sqlite::SqlitePool;
 
-use crate::models::{InputMode, TodoItem, TodoList, TodoRow, new_todo_item, parse_date_string};
+use crate::models::{
+    InputMode, TodoItem, TodoList, TodoRow, new_todo_item, parse_date_string,
+    sort_todos_hierarchically,
+};
 
 pub struct App {
     pub should_exit: bool,
@@ -42,6 +45,8 @@ impl App {
                 sort_order: row.sort_order,
             })
             .collect();
+
+        let todo_items = sort_todos_hierarchically(todo_items);
 
         let no_todos = {
             TodoList {
@@ -92,12 +97,11 @@ impl App {
     pub fn handle_key(&mut self, key: KeyEvent) {
         match self.input_mode {
             InputMode::Normal => match key.code {
-                KeyCode::Char('i') => self.input_mode.toggle(),
-                KeyCode::Char('o') => {
+                KeyCode::Char('i') => {
                     self.creating_child_todo = false;
                     self.input_mode.toggle();
                 }
-                KeyCode::Char('O') => {
+                KeyCode::Char('o') => {
                     self.creating_child_todo = true;
                     self.input_mode.toggle();
                 }
@@ -272,6 +276,7 @@ impl App {
         });
 
         self.todo_list.items.push(todo_item);
+        self.todo_list.items = sort_todos_hierarchically(self.todo_list.items.clone());
         self.input = String::new();
         self.character_index = 0;
     }

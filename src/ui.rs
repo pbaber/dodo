@@ -62,10 +62,15 @@ pub fn todo_list(items: Vec<TodoItem>, width: u16) -> List<'static> {
     let todo_items: Vec<ListItem> = items
         .iter()
         .map(|todo_item| {
-            let content = if todo_item.completed_at.is_none() {
-                format!("☐ {}", todo_item.todo)
+            let indent = if todo_item.parent_id.is_some() {
+                "  "
             } else {
-                format!("✓ {}", todo_item.todo)
+                ""
+            };
+            let content = if todo_item.completed_at.is_none() {
+                format!("{}☐ {}", indent, todo_item.todo)
+            } else {
+                format!("{}✓ {}", indent, todo_item.todo)
             };
 
             let wrapped_lines = wrap_text(&content, width as usize);
@@ -86,10 +91,15 @@ pub fn calculate_total_display_lines(app: &crate::app::App, width: u16) -> usize
         .items
         .iter()
         .map(|todo_item| {
-            let content = if todo_item.completed_at.is_none() {
-                format!("☐ {}", todo_item.todo)
+            let indent = if todo_item.parent_id.is_some() {
+                "  "
             } else {
-                format!("✓ {}", todo_item.todo)
+                ""
+            };
+            let content = if todo_item.completed_at.is_none() {
+                format!("{}☐ {}", indent, todo_item.todo)
+            } else {
+                format!("{}✓ {}", indent, todo_item.todo)
             };
             wrap_text(&content, width as usize).len()
         })
