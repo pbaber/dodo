@@ -111,7 +111,7 @@ pub fn input_line(app: &crate::app::App) -> Paragraph {
 }
 
 pub fn footer() -> Paragraph<'static> {
-    Paragraph::new("Here's the bottom part").centered()
+    Paragraph::new("j down, k up, l/Enter completed, d delete").centered()
 }
 
 fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
