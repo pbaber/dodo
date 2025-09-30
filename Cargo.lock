@@ -483,6 +483,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dodo"
+version = "0.1.0"
+dependencies = [
+ "anstyle",
+ "chrono",
+ "color-eyre",
+ "crossterm",
+ "ratatui",
+ "sqlx",
+ "textwrap",
+ "tokio",
+]
+
+[[package]]
 name = "dotenvy"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1752,20 +1766,6 @@ dependencies = [
  "spki",
  "subtle",
  "zeroize",
-]
-
-[[package]]
-name = "rust-todo"
-version = "0.1.0"
-dependencies = [
- "anstyle",
- "chrono",
- "color-eyre",
- "crossterm",
- "ratatui",
- "sqlx",
- "textwrap",
- "tokio",
 ]
 
 [[package]]
