@@ -114,7 +114,7 @@ impl App {
                 KeyCode::Char('G') | KeyCode::End => self.select_last(),
                 KeyCode::Char('J') => self.move_todo_down(),
                 KeyCode::Char('K') => self.move_todo_up(),
-                KeyCode::Char('l') | KeyCode::Right | KeyCode::Enter => {
+                KeyCode::Char('c') | KeyCode::Right | KeyCode::Enter => {
                     self.toggle_status();
                 }
                 _ => {}
