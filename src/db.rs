@@ -29,8 +29,12 @@ pub async fn write_input_to_database(
     sqlx::query(query)
         .bind(&todo.todo)
         .bind(&todo.details)
-        .bind(&todo.date.format("%Y-%m-%d").to_string())
-        .bind(&todo.completed_at.map(|d| d.format("%Y-%m-%d").to_string()))
+        .bind(&todo.date.format("%Y-%m-%d %H:%M:%S").to_string())
+        .bind(
+            &todo
+                .completed_at
+                .map(|d| d.format("%Y-%m-%d %H:%M:%S").to_string()),
+        )
         .bind(&todo.parent_id)
         .bind(&todo.sort_order)
         .execute(pool)
@@ -85,7 +89,7 @@ pub async fn toggle_todo_status_in_database(
         .bind(
             todo_item
                 .completed_at
-                .map(|d| d.format("%Y-%m-%d").to_string()),
+                .map(|d| d.format("%Y-%m-%d %H:%M:%S").to_string()),
         )
         .bind(id)
         .execute(pool)

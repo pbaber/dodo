@@ -1,4 +1,4 @@
-use chrono::{Local, NaiveDate};
+use chrono::{Local, NaiveDateTime};
 
 #[derive(PartialEq)]
 pub enum InputMode {
@@ -20,8 +20,8 @@ pub struct TodoItem {
     pub id: Option<i64>,
     pub todo: String,
     pub details: String,
-    pub completed_at: Option<NaiveDate>,
-    pub date: NaiveDate,
+    pub completed_at: Option<NaiveDateTime>,
+    pub date: NaiveDateTime,
     pub parent_id: Option<i64>,
     pub sort_order: i32,
 }
@@ -42,8 +42,9 @@ pub struct TodoRow {
     pub sort_order: i32,
 }
 
-pub fn parse_date_string(date_str: &str) -> NaiveDate {
-    NaiveDate::parse_from_str(date_str, "%Y-%m-%d").unwrap_or_else(|_| Local::now().date_naive())
+pub fn parse_date_string(date_str: &str) -> NaiveDateTime {
+    NaiveDateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S")
+        .unwrap_or_else(|_| Local::now().naive_local())
 }
 
 pub fn new_todo_item(todo: &str, details: &str, parent_id: Option<i64>) -> TodoItem {
@@ -52,7 +53,7 @@ pub fn new_todo_item(todo: &str, details: &str, parent_id: Option<i64>) -> TodoI
         todo: todo.to_string(),
         details: details.to_string(),
         completed_at: None,
-        date: Local::now().date_naive(),
+        date: Local::now().naive_local(),
         parent_id: parent_id,
         sort_order: 0,
     }

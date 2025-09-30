@@ -55,7 +55,7 @@ impl App {
                     todo: "Make a todo item".to_string(),
                     details: "One's life always has something to do".to_string(),
                     completed_at: None,
-                    date: Local::now().date_naive(),
+                    date: Local::now().naive_local(),
                     parent_id: None,
                     sort_order: 0,
                 }],
@@ -228,7 +228,7 @@ impl App {
             if self.todo_list.items[index].completed_at.is_some() {
                 None
             } else {
-                Some(Local::now().date_naive())
+                Some(Local::now().naive_local())
             };
 
         let todo_item = self.todo_list.items[index].clone();
