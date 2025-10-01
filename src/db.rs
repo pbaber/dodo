@@ -56,6 +56,20 @@ pub async fn delete_todo_from_database(
     Ok(())
 }
 
+pub async fn update_todo_text(
+    pool: &SqlitePool,
+    todo_id: i64,
+    new_text: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE todos SET todo = ? WHERE id = ?")
+        .bind(new_text)
+        .bind(todo_id)
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}
+
 pub async fn update_todo_sort_order(
     pool: &SqlitePool,
     todo_id: i64,

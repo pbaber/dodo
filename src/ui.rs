@@ -24,9 +24,8 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
 
     frame.render_widget(title(app), top_area);
 
-    let items_cloned = app.todo_list.items.clone();
-    // TODO: This should match the prefix length in todo_list (currently "☐ " or "✓ " = 2 chars)
-    let list = todo_list(items_cloned, terminal_width - 2);
+    let list = todo_list(app, terminal_width - 2);
+
     frame.render_stateful_widget(list, mid_area, &mut app.todo_list.state);
 
     frame.render_widget(input_line(app), input_area);
@@ -37,19 +36,68 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
 
     match app.input_mode {
         InputMode::Normal => {}
-        InputMode::Insert => frame.set_cursor_position(Position::new(
-            input_area.x + app.character_index as u16 + 1,
-            input_area.y + 1,
-        )),
+        InputMode::Insert => {
+            if let Some(editing_idx) = app.editing_index {
+                // Editing inline - position cursor in the list
+                let mut line_count = 0;
+
+                // Count lines above the edited todo
+                for (idx, todo_item) in app.todo_list.items.iter().enumerate() {
+                    if idx == editing_idx {
+                        break;
+                    }
+                    let indent = if todo_item.parent_id.is_some() {
+                        "  "
+                    } else {
+                        ""
+                    };
+                    let content = if todo_item.completed_at.is_none() {
+                        format!("{}☐ {}", indent, todo_item.todo)
+                    } else {
+                        format!("{}✓ {}", indent, todo_item.todo)
+                    };
+                    line_count += wrap_text(&content, (terminal_width - 2) as usize).len();
+                }
+
+                let indent = if app.todo_list.items[editing_idx].parent_id.is_some() {
+                    "  "
+                } else {
+                    ""
+                };
+                let prefix = if app.todo_list.items[editing_idx].completed_at.is_none() {
+                    "☐ "
+                } else {
+                    "✓ "
+                };
+                let prefix_len = indent.len() + prefix.len();
+
+                frame.set_cursor_position(Position::new(
+                    mid_area.x + prefix_len as u16 + app.character_index as u16 + 1,
+                    mid_area.y + line_count as u16,
+                ));
+            } else {
+                frame.set_cursor_position(Position::new(
+                    input_area.x + app.character_index as u16 + 1,
+                    input_area.y + 1,
+                ));
+            }
+        }
     }
 }
 
 pub fn title(app: &crate::app::App) -> Paragraph {
     if app.input_mode == InputMode::Insert {
-        Paragraph::new("Insert Mode")
-            .bold()
-            .style(Style::default().fg(Color::Green))
-            .centered()
+        if app.editing_index.is_some() {
+            Paragraph::new("Editing")
+                .bold()
+                .style(Style::default().fg(Color::Cyan))
+                .centered()
+        } else {
+            Paragraph::new("Insert Mode")
+                .bold()
+                .style(Style::default().fg(Color::Green))
+                .centered()
+        }
     } else {
         Paragraph::new("Normal Mode")
             .bold()
@@ -58,19 +106,29 @@ pub fn title(app: &crate::app::App) -> Paragraph {
     }
 }
 
-pub fn todo_list(items: Vec<TodoItem>, width: u16) -> List<'static> {
-    let todo_items: Vec<ListItem> = items
+pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
+    let todo_items: Vec<ListItem> = app
+        .todo_list
+        .items
         .iter()
-        .map(|todo_item| {
+        .enumerate()
+        .map(|(index, todo_item)| {
             let indent = if todo_item.parent_id.is_some() {
                 "  "
             } else {
                 ""
             };
-            let content = if todo_item.completed_at.is_none() {
-                format!("{}☐ {}", indent, todo_item.todo)
+
+            let text = if app.editing_index == Some(index) {
+                &app.input
             } else {
-                format!("{}✓ {}", indent, todo_item.todo)
+                &todo_item.todo
+            };
+
+            let content = if todo_item.completed_at.is_none() {
+                format!("{}☐ {}", indent, text)
+            } else {
+                format!("{}✓ {}", indent, text)
             };
 
             let wrapped_lines = wrap_text(&content, width as usize);
@@ -111,7 +169,7 @@ pub fn input_line(app: &crate::app::App) -> Paragraph {
 }
 
 pub fn footer() -> Paragraph<'static> {
-    Paragraph::new("j down, k up, c/Enter completed, d delete").centered()
+    Paragraph::new("j down, k up, e edit, c/Enter completed, d delete").centered()
 }
 
 fn wrap_text(text: &str, max_width: usize) -> Vec<String> {

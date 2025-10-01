@@ -13,9 +13,10 @@ pub struct App {
     pub should_exit: bool,
     pub pool: SqlitePool,
     pub todo_list: TodoList,
-    pub input_mode: InputMode,
     pub character_index: usize,
     pub creating_child_todo: bool,
+    pub editing_index: Option<usize>,
+    pub input_mode: InputMode,
     pub input: String,
 }
 
@@ -67,6 +68,7 @@ impl App {
             should_exit: false,
             pool,
             input_mode: InputMode::Normal,
+            editing_index: None,
             character_index: 0,
             input: String::from(""),
             creating_child_todo: false,
@@ -105,6 +107,7 @@ impl App {
                     self.creating_child_todo = true;
                     self.input_mode.toggle();
                 }
+                KeyCode::Char('e') => self.enter_edit_mode(),
                 KeyCode::Char('q') => self.should_exit = true,
                 KeyCode::Char('d') => self.delete_selected_todo(),
                 KeyCode::Char('h') | KeyCode::Left => self.select_none(),
@@ -120,8 +123,17 @@ impl App {
                 _ => {}
             },
             InputMode::Insert => match key.code {
-                KeyCode::Esc => self.input_mode.toggle(),
-                KeyCode::Enter => self.add_input_todo(),
+                KeyCode::Esc => {
+                    self.editing_index = None;
+                    self.input_mode.toggle();
+                }
+                KeyCode::Enter => {
+                    if self.editing_index.is_some() {
+                        self.save_edited_todo();
+                    } else {
+                        self.add_input_todo();
+                    }
+                }
                 KeyCode::Char(to_insert) => self.enter_char(to_insert),
                 KeyCode::Backspace => self.delete_char(),
                 KeyCode::Left => self.move_cursor_left(),
@@ -212,6 +224,48 @@ impl App {
 
 // Business Logic - Core Todo Operations
 impl App {
+    pub fn save_edited_todo(&mut self) {
+        let Some(index) = self.editing_index else {
+            return;
+        };
+        if index >= self.todo_list.items.len() {
+            return;
+        }
+
+        self.todo_list.items[index].todo = self.input.clone();
+
+        let pool = self.pool.clone();
+        let todo_id = self.todo_list.items[index].id;
+        let new_text = self.input.clone();
+
+        tokio::spawn(async move {
+            if let Some(id) = todo_id {
+                if let Err(e) = crate::db::update_todo_text(&pool, id, &new_text).await {
+                    eprintln!("Database error updating todo text: {}", e);
+                }
+            }
+        });
+
+        self.input = String::new();
+        self.character_index = 0;
+        self.editing_index = None;
+        self.input_mode.toggle();
+    }
+
+    pub fn enter_edit_mode(&mut self) {
+        let Some(index) = self.todo_list.state.selected() else {
+            return;
+        };
+        let Some(todo) = self.todo_list.items.get(index) else {
+            return;
+        };
+
+        self.input = todo.todo.clone();
+        self.character_index = self.input.chars().count();
+        self.editing_index = Some(index);
+        self.input_mode.toggle();
+    }
+
     /// Changes the status of the selected list item
     pub fn toggle_status(&mut self) {
         let Some(index) = self.todo_list.state.selected() else {
