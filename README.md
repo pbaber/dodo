@@ -7,12 +7,15 @@
 ### Main points
 
 1. TUI first
+
   I want to be able to handle my todo list fluidly in a terminal emulator.
 
 2. WebApp second
+
   I need to be able to interact with my todo list from my phone in at least the most basic of ways.  Adding todos, editing todos and completing todos.
 
-3. CLI least
+3. CLI last
+
   Making sure the todos can be interacted with from the command line is useful for general interaction through third party sources like through AI, hotkeys or scripts.  These can be done through the web server backend but it's just nice to be able to do it through cli commands.
 
 
