@@ -4,7 +4,6 @@
   <img src="assets/dodo.png" width="200">
 </p>
 
-### Main points
 
 #### TUI first
 
