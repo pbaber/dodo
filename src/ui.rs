@@ -1,8 +1,9 @@
 use ratatui::layout::{Constraint, Layout, Position};
 use ratatui::style::palette::tailwind::SLATE;
 use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::text::Text;
+use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
+use tokio::sync::OwnedRwLockMappedWriteGuard;
 
 use crate::models::*;
 
@@ -114,26 +115,61 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
         .enumerate()
         .map(|(index, todo_item)| {
             let indent = if todo_item.parent_id.is_some() {
-                "  "
+                Span::raw("  ")
             } else {
-                ""
+                Span::raw("")
+            };
+
+            let checkbox = if todo_item.completed_at.is_none() {
+                Span::raw("☐ ")
+            } else {
+                Span::raw("✓ ")
             };
 
             let text = if app.editing_index == Some(index) {
-                &app.input
+                Span::raw(app.input.clone())
             } else {
-                &todo_item.todo
+                Span::raw(todo_item.todo.clone())
             };
 
-            let content = if todo_item.completed_at.is_none() {
-                format!("{}☐ {}", indent, text)
+            // let content = Line::from(vec![indent, checkbox, text]);
+            // ListItem::new(content)
+
+            // get the text content for wrapping
+            let text_content = if app.editing_index == Some(index) {
+                app.input.clone()
             } else {
-                format!("{}✓ {}", indent, text)
+                todo_item.todo.clone()
             };
 
-            let wrapped_lines = wrap_text(&content, width as usize);
-            let text = Text::from(wrapped_lines.join("\n"));
-            ListItem::new(text)
+            // Calculate availble width for text
+            let prefix_width = indent.width() + checkbox.width();
+            let text_width = (width as usize).saturating_sub(prefix_width);
+
+            let wrapped = wrap_text(&text_content, text_width);
+
+            // Create Lines
+            let lines: Vec<Line> = wrapped
+                .iter()
+                .enumerate()
+                .map(|(i, line)| {
+                    if i == 0 {
+                        Line::from(vec![
+                            indent.clone(),
+                            checkbox.clone(),
+                            Span::raw(line.to_string()),
+                        ])
+                    } else {
+                        Line::from(vec![
+                            indent.clone(),
+                            Span::raw("  "),
+                            Span::raw(line.to_string()),
+                        ])
+                    }
+                })
+                .collect();
+
+            ListItem::new(lines)
         })
         .collect();
 
