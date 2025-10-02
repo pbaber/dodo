@@ -107,6 +107,22 @@ pub fn title(app: &crate::app::App) -> Paragraph {
     }
 }
 
+fn indent_span(todo_item: &TodoItem) -> Span<'static> {
+    if todo_item.parent_id.is_some() {
+        Span::raw("  ")
+    } else {
+        Span::raw("")
+    }
+}
+
+fn checkbox_span(todo_item: &TodoItem) -> Span<'static> {
+    if todo_item.completed_at.is_none() {
+        Span::raw("☐ ")
+    } else {
+        Span::raw("✓ ")
+    }
+}
+
 pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
     let todo_items: Vec<ListItem> = app
         .todo_list
@@ -114,18 +130,6 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
         .iter()
         .enumerate()
         .map(|(index, todo_item)| {
-            let indent = if todo_item.parent_id.is_some() {
-                Span::raw("  ")
-            } else {
-                Span::raw("")
-            };
-
-            let checkbox = if todo_item.completed_at.is_none() {
-                Span::raw("☐ ")
-            } else {
-                Span::raw("✓ ")
-            };
-
             // get the text content for wrapping
             let text_content = if app.editing_index == Some(index) {
                 app.input.clone()
@@ -133,7 +137,8 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
                 todo_item.todo.clone()
             };
 
-            // Calculate availble width for text
+            let indent = indent_span(todo_item);
+            let checkbox = checkbox_span(todo_item);
             let prefix_width = indent.width() + checkbox.width();
             let text_width = (width as usize).saturating_sub(prefix_width);
 
@@ -153,7 +158,7 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
                     } else {
                         Line::from(vec![
                             indent.clone(),
-                            Span::raw("  "),
+                            Span::raw("  ".to_string()),
                             Span::raw(line.to_string()),
                         ])
                     }
