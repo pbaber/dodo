@@ -126,15 +126,6 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
                 Span::raw("✓ ")
             };
 
-            let text = if app.editing_index == Some(index) {
-                Span::raw(app.input.clone())
-            } else {
-                Span::raw(todo_item.todo.clone())
-            };
-
-            // let content = Line::from(vec![indent, checkbox, text]);
-            // ListItem::new(content)
-
             // get the text content for wrapping
             let text_content = if app.editing_index == Some(index) {
                 app.input.clone()
