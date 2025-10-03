@@ -130,17 +130,17 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
         .iter()
         .enumerate()
         .map(|(index, todo_item)| {
+            let indent = indent_span(todo_item);
+            let checkbox = checkbox_span(todo_item);
+            let prefix_width = indent.width() + checkbox.width();
+
+            let text_width = (width as usize).saturating_sub(prefix_width);
             // get the text content for wrapping
             let text_content = if app.editing_index == Some(index) {
                 app.input.clone()
             } else {
                 todo_item.todo.clone()
             };
-
-            let indent = indent_span(todo_item);
-            let checkbox = checkbox_span(todo_item);
-            let prefix_width = indent.width() + checkbox.width();
-            let text_width = (width as usize).saturating_sub(prefix_width);
 
             let wrapped = wrap_text(&text_content, text_width);
 
