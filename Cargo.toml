@@ -12,3 +12,5 @@ anstyle = "1.0"
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio-rustls", "chrono"] }
 tokio = { version = "1.0", features = ["full"] }
 textwrap = "0.16.2"
+tui-textarea = "0.7.0"
+tui-popup = "0.6.0"
