@@ -90,10 +90,6 @@ impl App {
             if let crossterm::event::Event::Key(key) = crossterm::event::read()? {
                 self.handle_key(key);
             }
-
-            // if let Some(key) = crossterm::event::read()?.as_key_press_event() {
-            //     self.handle_key(key);
-            // }
         }
         Ok(())
     }

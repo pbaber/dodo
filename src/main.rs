@@ -1,4 +1,5 @@
 use color_eyre::Result;
+use ratatui::backend;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 use std::env;
 use std::str::FromStr;
@@ -20,9 +21,22 @@ async fn main() -> Result<(), color_eyre::Report> {
 
     let app = crate::app::App::with_pool(pool).await?;
 
-    // Only run TUI if we're in a proper terminal environment
     match env::var("TERM") {
-        Ok(_) => ratatui::run(|terminal| app.run(terminal))?,
+        Ok(_) => {
+            crossterm::terminal::enable_raw_mode()?;
+            crossterm::execute!(std::io::stdout(), crossterm::terminal::EnterAlternateScreen)?;
+
+            let backend = ratatui::backend::CrosstermBackend::new(std::io::stdout());
+            let mut terminal = ratatui::Terminal::new(backend)?;
+
+            let result = app.run(&mut terminal);
+
+            crossterm::execute!(std::io::stdout(), crossterm::terminal::LeaveAlternateScreen)?;
+
+            crossterm::terminal::disable_raw_mode()?;
+
+            result?;
+        }
         Err(_) => println!("Not running in a terminal, skipping TUI"),
     }
 

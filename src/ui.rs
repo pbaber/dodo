@@ -1,10 +1,9 @@
+use crate::models::*;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::palette::tailwind::SLATE;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
-
-use crate::models::*;
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 
@@ -14,12 +13,12 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
     let main_layout = Layout::vertical([
         Constraint::Length(1),
         Constraint::Max(calculate_total_display_lines(app, terminal_width - 2) as u16),
-        Constraint::Length(3),
         Constraint::Fill(1),
         Constraint::Length(1),
     ]);
 
-    let [top_area, mid_area, blank_area, bottom_area] = frame.area().layout(&main_layout);
+    let areas = main_layout.split(frame.area());
+    let [top_area, mid_area, blank_area, bottom_area] = [areas[0], areas[1], areas[2], areas[3]];
 
     frame.render_widget(title(app), top_area);
 
@@ -30,6 +29,20 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
     frame.render_widget(Paragraph::new(String::from("")), blank_area);
 
     frame.render_widget(footer(), bottom_area);
+
+    let area = frame.area();
+    let popup_width = 60;
+    let popup_height = 10;
+    let x = (area.width.saturating_sub(popup_width)) / 2;
+    let y = (area.height.saturating_sub(popup_height)) / 2;
+    let popup_rect = ratatui::layout::Rect::new(x, y, popup_width, popup_height);
+
+    let test_block = Block::new()
+        .borders(ratatui::widgets::Borders::ALL)
+        .title("Test Popup");
+
+    frame.render_widget(ratatui::widgets::Clear, popup_rect);
+    frame.render_widget(&app.textarea, popup_rect);
 }
 
 pub fn title(app: &crate::app::App) -> Paragraph {
