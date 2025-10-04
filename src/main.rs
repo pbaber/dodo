@@ -1,5 +1,8 @@
 use color_eyre::Result;
-use ratatui::backend;
+use crossterm::execute;
+use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
+use ratatui::Terminal;
+use ratatui::backend::CrosstermBackend;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 use std::env;
 use std::str::FromStr;
@@ -23,17 +26,17 @@ async fn main() -> Result<(), color_eyre::Report> {
 
     match env::var("TERM") {
         Ok(_) => {
-            crossterm::terminal::enable_raw_mode()?;
-            crossterm::execute!(std::io::stdout(), crossterm::terminal::EnterAlternateScreen)?;
+            terminal::enable_raw_mode()?;
+            execute!(std::io::stdout(), EnterAlternateScreen)?;
 
-            let backend = ratatui::backend::CrosstermBackend::new(std::io::stdout());
-            let mut terminal = ratatui::Terminal::new(backend)?;
+            let backend = CrosstermBackend::new(std::io::stdout());
+            let mut terminal = Terminal::new(backend)?;
 
             let result = app.run(&mut terminal);
 
-            crossterm::execute!(std::io::stdout(), crossterm::terminal::LeaveAlternateScreen)?;
+            execute!(std::io::stdout(), LeaveAlternateScreen)?;
 
-            crossterm::terminal::disable_raw_mode()?;
+            terminal::disable_raw_mode()?;
 
             result?;
         }
