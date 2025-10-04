@@ -3,6 +3,7 @@ use color_eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     DefaultTerminal,
+    symbols::block,
     widgets::{Block, ListState},
 };
 use sqlx::sqlite::SqlitePool;
@@ -247,25 +248,27 @@ impl App {
         self.input_mode.toggle();
     }
 
-    pub fn enter_child_mode(&mut self) {
-        self.creating_child_todo = true;
-        self.textarea = TextArea::default();
+    pub fn set_textarea_block(&mut self, block_title: String) {
         self.textarea.set_block(
             Block::new()
                 .borders(ratatui::widgets::Borders::ALL)
-                .title("New Child Tdoo"),
+                .title(block_title),
         );
-        self.input_mode.toggle();
     }
 
     pub fn enter_insert_mode(&mut self) {
         self.creating_child_todo = false;
         self.textarea = TextArea::default();
-        self.textarea.set_block(
-            Block::new()
-                .borders(ratatui::widgets::Borders::ALL)
-                .title("New Todo"),
-        );
+
+        self.set_textarea_block(String::from("New todo"));
+        self.input_mode.toggle();
+    }
+
+    pub fn enter_child_mode(&mut self) {
+        self.creating_child_todo = true;
+        self.textarea = TextArea::default();
+
+        self.set_textarea_block(String::from("New Child Todo"));
         self.input_mode.toggle();
     }
 
@@ -278,11 +281,7 @@ impl App {
         };
 
         self.textarea = TextArea::new(vec![todo.todo.clone()]);
-        self.textarea.set_block(
-            Block::new()
-                .borders(ratatui::widgets::Borders::ALL)
-                .title("Edit Todo"),
-        );
+        self.set_textarea_block(String::from("Edit Todo"));
         self.editing_index = Some(index);
         self.input_mode.toggle();
     }
@@ -354,6 +353,7 @@ impl App {
         self.todo_list.items.push(todo_item);
         self.todo_list.items = sort_todos_hierarchically(self.todo_list.items.clone());
         self.textarea = TextArea::default();
+        self.input_mode.toggle();
     }
 
     /// Deletes the currently selected todo item
