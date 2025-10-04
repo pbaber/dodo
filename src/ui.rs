@@ -1,10 +1,8 @@
-use ratatui::Frame;
-use ratatui::layout::{Constraint, Layout, Position};
+use ratatui::layout::{Constraint, Layout};
 use ratatui::style::palette::tailwind::SLATE;
 use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::text::{Line, Span, Text};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
-use tui_popup::{Popup, SizedWrapper};
 
 use crate::models::*;
 
@@ -21,8 +19,7 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
         Constraint::Length(1),
     ]);
 
-    let [top_area, mid_area, input_area, blank_area, bottom_area] =
-        frame.area().layout(&main_layout);
+    let [top_area, mid_area, blank_area, bottom_area] = frame.area().layout(&main_layout);
 
     frame.render_widget(title(app), top_area);
 
@@ -77,8 +74,7 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
         .todo_list
         .items
         .iter()
-        .enumerate()
-        .map(|(index, todo_item)| {
+        .map(|todo_item| {
             let indent = indent_span(todo_item);
             let checkbox = checkbox_span(todo_item);
             let prefix_width = indent.width() + checkbox.width();
