@@ -101,10 +101,7 @@ impl App {
     pub fn handle_key(&mut self, key: KeyEvent) {
         match self.input_mode {
             InputMode::Normal => match key.code {
-                KeyCode::Char('i') => {
-                    self.creating_child_todo = false;
-                    self.input_mode.toggle();
-                }
+                KeyCode::Char('i') => self.enter_insert_mode(),
                 KeyCode::Char('o') => {
                     self.creating_child_todo = true;
                     self.input_mode.toggle();
@@ -250,6 +247,17 @@ impl App {
 
         self.textarea = TextArea::default();
         self.editing_index = None;
+        self.input_mode.toggle();
+    }
+
+    pub fn enter_insert_mode(&mut self) {
+        self.creating_child_todo = false;
+        self.textarea = TextArea::default();
+        self.textarea.set_block(
+            Block::new()
+                .borders(ratatui::widgets::Borders::ALL)
+                .title("New Todo"),
+        );
         self.input_mode.toggle();
     }
 
