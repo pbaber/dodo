@@ -1,7 +1,10 @@
 use chrono::Local;
 use color_eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::{DefaultTerminal, widgets::ListState};
+use ratatui::{
+    DefaultTerminal,
+    widgets::{Block, ListState},
+};
 use sqlx::sqlite::SqlitePool;
 use tui_textarea::TextArea;
 
@@ -259,6 +262,11 @@ impl App {
         };
 
         self.textarea = TextArea::new(vec![todo.todo.clone()]);
+        self.textarea.set_block(
+            Block::new()
+                .borders(ratatui::widgets::Borders::ALL)
+                .title("Edit Todo"),
+        );
         self.editing_index = Some(index);
         self.input_mode.toggle();
     }

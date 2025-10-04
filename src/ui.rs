@@ -1,4 +1,5 @@
 use crate::models::*;
+use color_eyre::owo_colors::OwoColorize;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::palette::tailwind::SLATE;
 use ratatui::style::{Color, Modifier, Style, Stylize};
@@ -36,10 +37,6 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
     let x = (area.width.saturating_sub(popup_width)) / 2;
     let y = (area.height.saturating_sub(popup_height)) / 2;
     let popup_rect = ratatui::layout::Rect::new(x, y, popup_width, popup_height);
-
-    let test_block = Block::new()
-        .borders(ratatui::widgets::Borders::ALL)
-        .title("Test Popup");
 
     frame.render_widget(ratatui::widgets::Clear, popup_rect);
     frame.render_widget(&app.textarea, popup_rect);
