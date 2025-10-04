@@ -3,6 +3,7 @@ use color_eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{DefaultTerminal, widgets::ListState};
 use sqlx::sqlite::SqlitePool;
+use tui_textarea::TextArea;
 
 use crate::models::{
     InputMode, TodoItem, TodoList, TodoRow, new_todo_item, parse_date_string,
@@ -13,11 +14,10 @@ pub struct App {
     pub should_exit: bool,
     pub pool: SqlitePool,
     pub todo_list: TodoList,
-    pub character_index: usize,
     pub creating_child_todo: bool,
     pub editing_index: Option<usize>,
     pub input_mode: InputMode,
-    pub input: String,
+    textarea: TextArea<'static>,
 }
 
 // Public API - Core Application Interface
@@ -69,8 +69,6 @@ impl App {
             pool,
             input_mode: InputMode::Normal,
             editing_index: None,
-            character_index: 0,
-            input: String::from(""),
             creating_child_todo: false,
             todo_list: if todo_items.is_empty() {
                 no_todos
@@ -80,6 +78,7 @@ impl App {
                     state: ListState::default(),
                 }
             },
+            textarea: TextArea::default(),
         })
     }
 
@@ -126,6 +125,7 @@ impl App {
                 KeyCode::Esc => {
                     self.editing_index = None;
                     self.input_mode.toggle();
+                    self.textarea = TextArea::default();
                 }
                 KeyCode::Enter => {
                     if self.editing_index.is_some() {
@@ -134,11 +134,9 @@ impl App {
                         self.add_input_todo();
                     }
                 }
-                KeyCode::Char(to_insert) => self.enter_char(to_insert),
-                KeyCode::Backspace => self.delete_char(),
-                KeyCode::Left => self.move_cursor_left(),
-                KeyCode::Right => self.move_cursor_right(),
-                _ => {}
+                _ => {
+                    self.textarea.input(key.into());
+                }
             },
         }
     }
@@ -232,11 +230,11 @@ impl App {
             return;
         }
 
-        self.todo_list.items[index].todo = self.input.clone();
+        let new_text = self.textarea.lines().join("\n");
+        self.todo_list.items[index].todo = new_text.clone();
 
         let pool = self.pool.clone();
         let todo_id = self.todo_list.items[index].id;
-        let new_text = self.input.clone();
 
         tokio::spawn(async move {
             if let Some(id) = todo_id {
@@ -246,8 +244,7 @@ impl App {
             }
         });
 
-        self.input = String::new();
-        self.character_index = 0;
+        self.textarea = TextArea::default();
         self.editing_index = None;
         self.input_mode.toggle();
     }
@@ -260,8 +257,7 @@ impl App {
             return;
         };
 
-        self.input = todo.todo.clone();
-        self.character_index = self.input.chars().count();
+        self.textarea = TextArea::new(vec![todo.todo.clone()]);
         self.editing_index = Some(index);
         self.input_mode.toggle();
     }
@@ -317,7 +313,8 @@ impl App {
             None
         };
 
-        let mut todo_item = new_todo_item(&self.input, "New Status", parent_id);
+        let input_text = self.textarea.lines().join("\n");
+        let mut todo_item = new_todo_item(&input_text, "New Status", parent_id);
         todo_item.sort_order = next_sort_order;
 
         let pool = self.pool.clone();
@@ -331,8 +328,7 @@ impl App {
 
         self.todo_list.items.push(todo_item);
         self.todo_list.items = sort_todos_hierarchically(self.todo_list.items.clone());
-        self.input = String::new();
-        self.character_index = 0;
+        self.textarea = TextArea::default();
     }
 
     /// Deletes the currently selected todo item
@@ -361,59 +357,5 @@ impl App {
                 }
             }
         }
-    }
-}
-
-// Low-level Utilities - Input handling and cursor management
-impl App {
-    /// Moves cursor left one position
-    pub fn move_cursor_left(&mut self) {
-        let cursor_moved_left = self.character_index.saturating_sub(1);
-        self.character_index = self.clamp_cursor(cursor_moved_left);
-    }
-
-    /// Moves cursor right one position
-    pub fn move_cursor_right(&mut self) {
-        let cursor_moved_right = self.character_index.saturating_add(1);
-        self.character_index = self.clamp_cursor(cursor_moved_right);
-    }
-
-    /// Inserts a character at the current cursor position
-    pub fn enter_char(&mut self, new_char: char) {
-        let index = self.byte_index();
-        self.input.insert(index, new_char);
-        self.move_cursor_right();
-    }
-
-    /// Deletes the character before the cursor
-    pub fn delete_char(&mut self) {
-        let is_not_cursor_leftmost = self.character_index != 0;
-        if is_not_cursor_leftmost {
-            let current_index = self.character_index;
-            let from_left_to_current_index = current_index - 1;
-
-            // Getting all characters before the selected character.
-            let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
-
-            // Getting all characters after selected character.
-            let after_char_to_delete = self.input.chars().skip(current_index);
-
-            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
-            self.move_cursor_left();
-        }
-    }
-
-    /// Gets the byte index for the current character position
-    fn byte_index(&self) -> usize {
-        self.input
-            .char_indices()
-            .map(|(i, _)| i)
-            .nth(self.character_index)
-            .unwrap_or(self.input.len())
-    }
-
-    /// Ensures cursor position stays within valid bounds
-    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        new_cursor_pos.clamp(0, self.input.chars().count())
     }
 }
