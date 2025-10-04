@@ -102,10 +102,7 @@ impl App {
         match self.input_mode {
             InputMode::Normal => match key.code {
                 KeyCode::Char('i') => self.enter_insert_mode(),
-                KeyCode::Char('o') => {
-                    self.creating_child_todo = true;
-                    self.input_mode.toggle();
-                }
+                KeyCode::Char('o') => self.enter_child_mode(),
                 KeyCode::Char('e') => self.enter_edit_mode(),
                 KeyCode::Char('q') => self.should_exit = true,
                 KeyCode::Char('d') => self.delete_selected_todo(),
@@ -247,6 +244,17 @@ impl App {
 
         self.textarea = TextArea::default();
         self.editing_index = None;
+        self.input_mode.toggle();
+    }
+
+    pub fn enter_child_mode(&mut self) {
+        self.creating_child_todo = true;
+        self.textarea = TextArea::default();
+        self.textarea.set_block(
+            Block::new()
+                .borders(ratatui::widgets::Borders::ALL)
+                .title("New Child Tdoo"),
+        );
         self.input_mode.toggle();
     }
 
