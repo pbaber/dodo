@@ -17,7 +17,7 @@ pub struct App {
     pub creating_child_todo: bool,
     pub editing_index: Option<usize>,
     pub input_mode: InputMode,
-    textarea: TextArea<'static>,
+    pub textarea: TextArea<'static>,
 }
 
 // Public API - Core Application Interface
@@ -87,9 +87,13 @@ impl App {
         while !self.should_exit {
             terminal.draw(|f| crate::ui::render_impl(&mut self, f))?;
 
-            if let Some(key) = crossterm::event::read()?.as_key_press_event() {
+            if let crossterm::event::Event::Key(key) = crossterm::event::read()? {
                 self.handle_key(key);
             }
+
+            // if let Some(key) = crossterm::event::read()?.as_key_press_event() {
+            //     self.handle_key(key);
+            // }
         }
         Ok(())
     }
@@ -135,7 +139,8 @@ impl App {
                     }
                 }
                 _ => {
-                    self.textarea.input(key.into());
+                    let input = tui_textarea::Input::from(key);
+                    self.textarea.input(input);
                 }
             },
         }

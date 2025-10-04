@@ -548,7 +548,7 @@ dependencies = [
  "anstyle",
  "chrono",
  "color-eyre",
- "crossterm 0.29.0",
+ "crossterm 0.28.1",
  "ratatui 0.30.0-alpha.5",
  "sqlx",
  "textwrap",

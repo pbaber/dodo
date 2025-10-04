@@ -1,9 +1,10 @@
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Position};
 use ratatui::style::palette::tailwind::SLATE;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
-use tokio::sync::OwnedRwLockMappedWriteGuard;
+use tui_popup::{Popup, SizedWrapper};
 
 use crate::models::*;
 
@@ -29,61 +30,9 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
 
     frame.render_stateful_widget(list, mid_area, &mut app.todo_list.state);
 
-    frame.render_widget(input_line(app), input_area);
-
     frame.render_widget(Paragraph::new(String::from("")), blank_area);
 
     frame.render_widget(footer(), bottom_area);
-
-    match app.input_mode {
-        InputMode::Normal => {}
-        InputMode::Insert => {
-            if let Some(editing_idx) = app.editing_index {
-                // Editing inline - position cursor in the list
-                let mut line_count = 0;
-
-                // Count lines above the edited todo
-                for (idx, todo_item) in app.todo_list.items.iter().enumerate() {
-                    if idx == editing_idx {
-                        break;
-                    }
-                    let indent = if todo_item.parent_id.is_some() {
-                        "  "
-                    } else {
-                        ""
-                    };
-                    let content = if todo_item.completed_at.is_none() {
-                        format!("{}☐ {}", indent, todo_item.todo)
-                    } else {
-                        format!("{}✓ {}", indent, todo_item.todo)
-                    };
-                    line_count += wrap_text(&content, (terminal_width - 2) as usize).len();
-                }
-
-                let indent = if app.todo_list.items[editing_idx].parent_id.is_some() {
-                    "  "
-                } else {
-                    ""
-                };
-                let prefix = if app.todo_list.items[editing_idx].completed_at.is_none() {
-                    "☐ "
-                } else {
-                    "✓ "
-                };
-                let prefix_len = indent.len() + prefix.len();
-
-                frame.set_cursor_position(Position::new(
-                    mid_area.x + prefix_len as u16 + app.character_index as u16 + 1,
-                    mid_area.y + line_count as u16,
-                ));
-            } else {
-                frame.set_cursor_position(Position::new(
-                    input_area.x + app.character_index as u16 + 1,
-                    input_area.y + 1,
-                ));
-            }
-        }
-    }
 }
 
 pub fn title(app: &crate::app::App) -> Paragraph {
@@ -136,11 +85,7 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
 
             let text_width = (width as usize).saturating_sub(prefix_width);
             // get the text content for wrapping
-            let text_content = if app.editing_index == Some(index) {
-                app.input.clone()
-            } else {
-                todo_item.todo.clone()
-            };
+            let text_content = todo_item.todo.clone();
 
             let wrapped = wrap_text(&text_content, text_width);
 
@@ -194,10 +139,6 @@ pub fn calculate_total_display_lines(app: &crate::app::App, width: u16) -> usize
             wrap_text(&content, width as usize).len()
         })
         .sum()
-}
-
-pub fn input_line(app: &crate::app::App) -> Paragraph {
-    Paragraph::new(app.input.clone()).block(Block::bordered().title_top("New Todo"))
 }
 
 pub fn footer() -> Paragraph<'static> {
