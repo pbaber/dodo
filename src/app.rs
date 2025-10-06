@@ -1,6 +1,7 @@
 use chrono::Local;
 use color_eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::style::Style;
 use ratatui::{
     DefaultTerminal,
     widgets::{Block, ListState},
@@ -258,8 +259,8 @@ impl App {
     pub fn enter_insert_mode(&mut self) {
         self.creating_child_todo = false;
         self.textarea = TextArea::default();
-
         self.set_textarea_block(String::from("New todo"));
+        self.textarea.set_cursor_line_style(Style::default());
         self.input_mode.toggle();
     }
 
@@ -268,6 +269,7 @@ impl App {
         self.textarea = TextArea::default();
 
         self.set_textarea_block(String::from("New Child Todo"));
+        self.textarea.set_cursor_line_style(Style::default());
         self.input_mode.toggle();
     }
 
@@ -281,6 +283,7 @@ impl App {
 
         self.textarea = TextArea::new(vec![todo.todo.clone()]);
         self.textarea.move_cursor(tui_textarea::CursorMove::End);
+        self.textarea.set_cursor_line_style(Style::default());
         self.set_textarea_block(String::from("Edit Todo"));
         self.editing_index = Some(index);
 
