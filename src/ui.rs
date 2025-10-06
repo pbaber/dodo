@@ -30,6 +30,22 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
 
     frame.render_widget(footer(), bottom_area);
 
+    render_input_box(app, frame);
+
+    // if app.input_mode == InputMode::Insert {
+    //     let area = frame.area();
+    //     let popup_width = 60;
+    //     let popup_height = 10;
+    //     let x = (area.width.saturating_sub(popup_width)) / 2;
+    //     let y = (area.height.saturating_sub(popup_height)) / 2;
+    //     let popup_rect = ratatui::layout::Rect::new(x, y, popup_width, popup_height);
+    //
+    //     frame.render_widget(ratatui::widgets::Clear, popup_rect);
+    //     frame.render_widget(&app.textarea, popup_rect);
+    // }
+}
+
+pub fn render_input_box(app: &crate::app::App, frame: &mut ratatui::Frame) {
     if app.input_mode == InputMode::Insert {
         let area = frame.area();
         let popup_width = 60;
