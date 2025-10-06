@@ -1,5 +1,4 @@
 use crate::models::*;
-use color_eyre::owo_colors::OwoColorize;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::palette::tailwind::SLATE;
 use ratatui::style::{Color, Modifier, Style, Stylize};

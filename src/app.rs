@@ -3,7 +3,6 @@ use color_eyre::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     DefaultTerminal,
-    symbols::block,
     widgets::{Block, ListState},
 };
 use sqlx::sqlite::SqlitePool;
@@ -281,8 +280,10 @@ impl App {
         };
 
         self.textarea = TextArea::new(vec![todo.todo.clone()]);
+        self.textarea.move_cursor(tui_textarea::CursorMove::End);
         self.set_textarea_block(String::from("Edit Todo"));
         self.editing_index = Some(index);
+
         self.input_mode.toggle();
     }
 
