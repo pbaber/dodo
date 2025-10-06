@@ -25,10 +25,10 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
     frame.render_widget(title(app), top_area);
 
     let list = todo_list(app, terminal_width - 2);
-
-    frame.render_widget(render_completed_list(), completed_tasks);
-
     frame.render_stateful_widget(list, mid_area, &mut app.todo_list.state);
+
+    let copmleted_list = completed_todo_list(app, terminal_width - 2);
+    frame.render_stateful_widget(copmleted_list, completed_tasks, &mut app.todo_list.state);
 
     frame.render_widget(Paragraph::new(String::from("")), blank_area);
 
@@ -92,6 +92,54 @@ fn checkbox_span(todo_item: &TodoItem) -> Span<'static> {
     } else {
         Span::raw("✓ ")
     }
+}
+
+pub fn completed_todo_list(app: &crate::app::App, width: u16) -> List<'static> {
+    let todo_items: Vec<ListItem> = app
+        .todo_list
+        .items
+        .iter()
+        .map(|todo_item| {
+            let indent = indent_span(todo_item);
+            let checkbox = checkbox_span(todo_item);
+            let prefix_width = indent.width() + checkbox.width();
+
+            let text_width = (width as usize).saturating_sub(prefix_width);
+            // get the text content for wrapping
+            let text_content = todo_item.todo.clone();
+
+            let wrapped = wrap_text(&text_content, text_width);
+
+            // Create Lines
+            let lines: Vec<Line> = wrapped
+                .iter()
+                .enumerate()
+                .map(|(i, line)| {
+                    if i == 0 {
+                        Line::from(vec![
+                            indent.clone(),
+                            checkbox.clone(),
+                            Span::raw(line.to_string()),
+                        ])
+                    } else {
+                        Line::from(vec![
+                            indent.clone(),
+                            Span::raw("  ".to_string()),
+                            Span::raw(line.to_string()),
+                        ])
+                    }
+                })
+                .collect();
+
+            ListItem::new(lines)
+        })
+        .collect();
+
+    List::new(todo_items)
+        .block(Block::new())
+        .highlight_style(SELECTED_STYLE)
+        .highlight_symbol(">")
+        .highlight_spacing(HighlightSpacing::Always)
 }
 
 pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
