@@ -14,15 +14,19 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
         Constraint::Length(1),
         Constraint::Max(calculate_total_display_lines(app, terminal_width - 2) as u16),
         Constraint::Fill(1),
+        Constraint::Length(10),
         Constraint::Length(1),
     ]);
 
     let areas = main_layout.split(frame.area());
-    let [top_area, mid_area, blank_area, bottom_area] = [areas[0], areas[1], areas[2], areas[3]];
+    let [top_area, mid_area, blank_area, completed_tasks, bottom_area] =
+        [areas[0], areas[1], areas[2], areas[3], areas[4]];
 
     frame.render_widget(title(app), top_area);
 
     let list = todo_list(app, terminal_width - 2);
+
+    frame.render_widget(render_completed_list(), completed_tasks);
 
     frame.render_stateful_widget(list, mid_area, &mut app.todo_list.state);
 
@@ -31,6 +35,12 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
     frame.render_widget(footer(), bottom_area);
 
     render_input_box(app, frame);
+}
+
+pub fn render_completed_list() -> Paragraph<'static> {
+    Paragraph::new("Just some words")
+        .centered()
+        .block(Block::bordered().title("Completed Tasks"))
 }
 
 pub fn render_input_box(app: &crate::app::App, frame: &mut ratatui::Frame) {
