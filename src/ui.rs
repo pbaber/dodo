@@ -11,36 +11,35 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
     let terminal_width = frame.area().width;
 
     let main_layout = Layout::vertical([
-        Constraint::Length(1),
-        Constraint::Max(calculate_total_display_lines(app, terminal_width - 2) as u16),
-        Constraint::Fill(1),
-        Constraint::Length(10),
-        Constraint::Length(1),
+        Constraint::Length(1), // top part shows modes
+        Constraint::Max(calculate_total_display_lines(app, terminal_width - 2) as u16), // The
+        // actual list
+        Constraint::Fill(1),    // blank area seperates top and bottom
+        Constraint::Length(10), // completed tasks list
+        Constraint::Length(1),  // hotkeys
     ]);
 
     let areas = main_layout.split(frame.area());
-    let [top_area, mid_area, blank_area, completed_tasks, bottom_area] =
-        [areas[0], areas[1], areas[2], areas[3], areas[4]];
+    let [
+        mode_area,
+        todo_list_area,
+        blank_area,
+        completed_tasks,
+        hotkeys_area,
+    ] = [areas[0], areas[1], areas[2], areas[3], areas[4]];
 
-    frame.render_widget(title(app), top_area);
+    // Rendering each area
+    frame.render_widget(title(app), mode_area);
 
     let list = todo_list(app, terminal_width - 2);
-    frame.render_stateful_widget(list, mid_area, &mut app.todo_list.state);
+    frame.render_stateful_widget(list, todo_list_area, &mut app.todo_list.state);
 
     let copmleted_list = completed_todo_list(app, terminal_width - 2);
     frame.render_stateful_widget(copmleted_list, completed_tasks, &mut app.todo_list.state);
 
     frame.render_widget(Paragraph::new(String::from("")), blank_area);
-
-    frame.render_widget(footer(), bottom_area);
-
+    frame.render_widget(footer(), hotkeys_area);
     render_input_box(app, frame);
-}
-
-pub fn render_completed_list() -> Paragraph<'static> {
-    Paragraph::new("Just some words")
-        .centered()
-        .block(Block::bordered().title("Completed Tasks"))
 }
 
 pub fn render_input_box(app: &crate::app::App, frame: &mut ratatui::Frame) {
