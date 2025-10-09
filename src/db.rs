@@ -48,6 +48,26 @@ pub async fn all_todos(pool: &SqlitePool) -> Result<Vec<TodoItem>, sqlx::Error> 
     Ok(sort_todos_hierarchically(todo_items))
 }
 
+pub async fn uncompleted_todos(pool: &SqlitePool) -> Result<Vec<TodoItem>, sqlx::Error> {
+    let uncompleted_todos: Vec<TodoItem> = all_todos(pool)
+        .await?
+        .into_iter()
+        .filter(|item| item.completed_at.is_none())
+        .collect();
+
+    Ok(uncompleted_todos)
+}
+
+pub async fn completed_todos(pool: &SqlitePool) -> Result<Vec<TodoItem>, sqlx::Error> {
+    let completed_todos: Vec<TodoItem> = all_todos(pool)
+        .await?
+        .into_iter()
+        .filter(|item| item.completed_at.is_some())
+        .collect();
+
+    Ok(completed_todos)
+}
+
 pub async fn write_input_to_database(
     pool: &SqlitePool,
     todo: &TodoItem,
