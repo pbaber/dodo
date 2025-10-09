@@ -1,4 +1,5 @@
 use crate::models::TodoItem;
+use crate::models::{TodoRow, parse_date_string, sort_todos_hierarchically};
 use sqlx::sqlite::SqlitePool;
 
 pub async fn create_todos_table(pool: &SqlitePool) -> Result<(), sqlx::Error> {
@@ -18,6 +19,33 @@ pub async fn create_todos_table(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
     Ok(())
+}
+
+pub async fn all_todos(pool: &SqlitePool) -> Result<Vec<TodoItem>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, TodoRow>(
+        "SELECT id, todo, details, completed_at, date, parent_id, sort_order FROM todos ORDER BY sort_order",
+    )
+        .fetch_all(pool)
+        .await?;
+
+    let todo_items: Vec<TodoItem> = rows
+        .into_iter()
+        .map(|row| TodoItem {
+            id: Some(row.id),
+            todo: row.todo,
+            details: row.details,
+            completed_at: if row.completed_at.is_empty() {
+                None
+            } else {
+                Some(parse_date_string(&row.completed_at))
+            },
+            date: parse_date_string(&row.date),
+            parent_id: row.parent_id,
+            sort_order: row.sort_order,
+        })
+        .collect();
+
+    Ok(sort_todos_hierarchically(todo_items))
 }
 
 pub async fn write_input_to_database(
