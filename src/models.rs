@@ -31,6 +31,11 @@ pub struct TodoList {
     pub state: ratatui::widgets::ListState,
 }
 
+pub struct CompletedTodoList {
+    pub items: Vec<TodoItem>,
+    pub state: ratatui::widgets::ListState,
+}
+
 #[derive(sqlx::FromRow)]
 pub struct TodoRow {
     pub id: i64,

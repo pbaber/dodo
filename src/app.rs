@@ -10,7 +10,7 @@ use sqlx::sqlite::SqlitePool;
 use tui_textarea::TextArea;
 
 use crate::models::{
-    InputMode, TodoItem, TodoList, TodoRow, new_todo_item, parse_date_string,
+    CompletedTodoList, InputMode, TodoItem, TodoList, TodoRow, new_todo_item, parse_date_string,
     sort_todos_hierarchically,
 };
 
@@ -18,6 +18,7 @@ pub struct App {
     pub should_exit: bool,
     pub pool: SqlitePool,
     pub todo_list: TodoList,
+    pub completed_todo_list: CompletedTodoList,
     pub creating_child_todo: bool,
     pub editing_index: Option<usize>,
     pub input_mode: InputMode,
@@ -53,6 +54,12 @@ impl App {
 
         let todo_items = sort_todos_hierarchically(todo_items);
 
+        let completed_items: Vec<TodoItem> = todo_items
+            .iter()
+            .filter(|item| item.completed_at.is_some())
+            .cloned()
+            .collect();
+
         let no_todos = {
             TodoList {
                 items: vec![TodoItem {
@@ -81,6 +88,10 @@ impl App {
                     items: todo_items,
                     state: ListState::default(),
                 }
+            },
+            completed_todo_list: CompletedTodoList {
+                items: completed_items,
+                state: ListState::default(),
             },
             textarea: TextArea::default(),
         })

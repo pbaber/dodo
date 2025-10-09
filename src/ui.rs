@@ -34,8 +34,12 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
     let list = todo_list(app, terminal_width - 2);
     frame.render_stateful_widget(list, todo_list_area, &mut app.todo_list.state);
 
-    let copmleted_list = completed_todo_list(app, terminal_width - 2);
-    frame.render_stateful_widget(copmleted_list, completed_tasks, &mut app.todo_list.state);
+    let completed_list = completed_todo_list(app, terminal_width - 2);
+    frame.render_stateful_widget(
+        completed_list,
+        completed_tasks,
+        &mut app.completed_todo_list.state,
+    );
 
     frame.render_widget(Paragraph::new(String::from("")), blank_area);
     frame.render_widget(footer(), hotkeys_area);
@@ -95,7 +99,7 @@ fn checkbox_span(todo_item: &TodoItem) -> Span<'static> {
 
 pub fn completed_todo_list(app: &crate::app::App, width: u16) -> List<'static> {
     let todo_items: Vec<ListItem> = app
-        .todo_list
+        .completed_todo_list
         .items
         .iter()
         .map(|todo_item| {
