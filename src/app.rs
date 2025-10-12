@@ -276,10 +276,12 @@ impl App {
 
     /// Refreshes the todo list app fields
     pub fn refresh_from_database(&mut self) -> Result<(), sqlx::Error> {
-        tokio::runtime::Handle::current().block_on(async {
-            self.uncompleted_todo_list.items = db::uncompleted_todos(&self.pool).await?;
-            self.completed_todo_list.items = db::completed_todos(&self.pool).await?;
-            Ok(())
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                self.uncompleted_todo_list.items = db::uncompleted_todos(&self.pool).await?;
+                self.completed_todo_list.items = db::completed_todos(&self.pool).await?;
+                Ok(())
+            })
         })
     }
 
@@ -292,28 +294,19 @@ impl App {
             return;
         };
 
-        let pool = self.pool.clone();
-        let todo_id = todo.id;
-
-        self.uncompleted_todo_list.items[index].completed_at = if self.uncompleted_todo_list.items
-            [index]
-            .completed_at
-            .is_some()
-        {
-            None
-        } else {
-            Some(Local::now().naive_local())
-        };
-
-        let todo_item = self.uncompleted_todo_list.items[index].clone();
-
-        tokio::spawn(async move {
-            if let Err(e) =
-                crate::db::toggle_todo_status_in_database(&pool, todo_id, &todo_item).await
-            {
-                eprintln!("Database error toggling status: {}", e);
-            }
+        let result = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                crate::db::toggle_todo_status_in_database(&self.pool, todo.id).await
+            })
         });
+
+        if let Err(e) = result {
+            eprintln!("Database error toggling status: {e}");
+        }
+
+        if let Err(e) = self.refresh_from_database() {
+            eprintln!("Database error refreshing lists: {e}");
+        }
     }
 
     /// Adds a new todo item from user input

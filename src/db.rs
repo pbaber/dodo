@@ -135,9 +135,15 @@ pub async fn update_todo_sort_order(
 pub async fn toggle_todo_status_in_database(
     pool: &SqlitePool,
     todo_id: Option<i64>,
-    todo_item: &TodoItem,
 ) -> Result<(), sqlx::Error> {
+    use chrono::Local;
+
     if let Some(id) = todo_id {
+        let now = Local::now()
+            .naive_local()
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string();
+
         sqlx::query(
             r#"
         UPDATE todos SET 
@@ -148,11 +154,7 @@ pub async fn toggle_todo_status_in_database(
         WHERE id = ?
         "#,
         )
-        .bind(
-            todo_item
-                .completed_at
-                .map(|d| d.format("%Y-%m-%d %H:%M:%S").to_string()),
-        )
+        .bind(now)
         .bind(id)
         .execute(pool)
         .await?;
