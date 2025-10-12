@@ -9,6 +9,7 @@ use ratatui::{
 use sqlx::sqlite::SqlitePool;
 use tui_textarea::TextArea;
 
+use crate::db;
 use crate::models::{
     CompletedTodoList, InputMode, TodoItem, TodoList, TodoRow, new_todo_item, parse_date_string,
     sort_todos_hierarchically,
@@ -271,6 +272,15 @@ impl App {
         self.editing_index = Some(index);
 
         self.input_mode.toggle();
+    }
+
+    /// Refreshes the todo list app fields
+    pub fn refresh_from_database(&mut self) -> Result<(), sqlx::Error> {
+        tokio::runtime::Handle::current().block_on(async {
+            self.uncompleted_todo_list.items = db::uncompleted_todos(&self.pool).await?;
+            self.completed_todo_list.items = db::completed_todos(&self.pool).await?;
+            Ok(())
+        })
     }
 
     /// Changes the status of the selected list item
