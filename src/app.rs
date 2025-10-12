@@ -29,7 +29,7 @@ pub struct App {
 impl App {
     /// Creates a new App instance with database connection and loads existing todos
     pub async fn with_pool(pool: SqlitePool) -> Result<Self, sqlx::Error> {
-        let todo_items: Vec<TodoItem> = crate::db::all_todos(&pool).await?;
+        let todo_items: Vec<TodoItem> = crate::db::uncompleted_todos(&pool).await?;
         let completed_items: Vec<TodoItem> = crate::db::completed_todos(&pool).await?;
 
         let no_todos = {
