@@ -32,7 +32,7 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
     frame.render_widget(title(app), mode_area);
 
     let list = todo_list(app, terminal_width - 2);
-    frame.render_stateful_widget(list, todo_list_area, &mut app.todo_list.state);
+    frame.render_stateful_widget(list, todo_list_area, &mut app.uncompleted_todo_list.state);
 
     let completed_list = completed_todo_list(app, terminal_width - 2);
     frame.render_stateful_widget(
@@ -147,7 +147,7 @@ pub fn completed_todo_list(app: &crate::app::App, width: u16) -> List<'static> {
 
 pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
     let todo_items: Vec<ListItem> = app
-        .todo_list
+        .uncompleted_todo_list
         .items
         .iter()
         .map(|todo_item| {
@@ -194,7 +194,7 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
 }
 
 pub fn calculate_total_display_lines(app: &crate::app::App, width: u16) -> usize {
-    app.todo_list
+    app.uncompleted_todo_list
         .items
         .iter()
         .map(|todo_item| {

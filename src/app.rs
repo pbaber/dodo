@@ -17,7 +17,7 @@ use crate::models::{
 pub struct App {
     pub should_exit: bool,
     pub pool: SqlitePool,
-    pub todo_list: TodoList,
+    pub uncompleted_todo_list: TodoList,
     pub completed_todo_list: CompletedTodoList,
     pub creating_child_todo: bool,
     pub editing_index: Option<usize>,
@@ -29,36 +29,8 @@ pub struct App {
 impl App {
     /// Creates a new App instance with database connection and loads existing todos
     pub async fn with_pool(pool: SqlitePool) -> Result<Self, sqlx::Error> {
-        let rows = sqlx::query_as::<_, TodoRow>(
-            "SELECT id, todo, details, completed_at, date, parent_id, sort_order FROM todos ORDER BY sort_order",
-        )
-        .fetch_all(&pool)
-        .await?;
-
-        let todo_items: Vec<TodoItem> = rows
-            .into_iter()
-            .map(|row| TodoItem {
-                id: Some(row.id),
-                todo: row.todo,
-                details: row.details,
-                completed_at: if row.completed_at.is_empty() {
-                    None
-                } else {
-                    Some(parse_date_string(&row.completed_at))
-                },
-                date: parse_date_string(&row.date),
-                parent_id: row.parent_id,
-                sort_order: row.sort_order,
-            })
-            .collect();
-
-        let todo_items = sort_todos_hierarchically(todo_items);
-
-        let completed_items: Vec<TodoItem> = todo_items
-            .iter()
-            .filter(|item| item.completed_at.is_some())
-            .cloned()
-            .collect();
+        let todo_items: Vec<TodoItem> = crate::db::all_todos(&pool).await?;
+        let completed_items: Vec<TodoItem> = crate::db::completed_todos(&pool).await?;
 
         let no_todos = {
             TodoList {
@@ -81,7 +53,7 @@ impl App {
             input_mode: InputMode::Normal,
             editing_index: None,
             creating_child_todo: false,
-            todo_list: if todo_items.is_empty() {
+            uncompleted_todo_list: if todo_items.is_empty() {
                 no_todos
             } else {
                 TodoList {
@@ -152,18 +124,18 @@ impl App {
     }
 
     pub fn move_todo_up(&mut self) {
-        if let Some(index) = self.todo_list.state.selected() {
-            if index > 0 && index < self.todo_list.items.len() {
+        if let Some(index) = self.uncompleted_todo_list.state.selected() {
+            if index > 0 && index < self.uncompleted_todo_list.items.len() {
                 // Swap sort_orders between current and previous item
-                let current_order = self.todo_list.items[index].sort_order;
-                let prev_order = self.todo_list.items[index - 1].sort_order;
+                let current_order = self.uncompleted_todo_list.items[index].sort_order;
+                let prev_order = self.uncompleted_todo_list.items[index - 1].sort_order;
 
-                self.todo_list.items[index].sort_order = prev_order;
-                self.todo_list.items[index - 1].sort_order = current_order;
+                self.uncompleted_todo_list.items[index].sort_order = prev_order;
+                self.uncompleted_todo_list.items[index - 1].sort_order = current_order;
 
                 // Swap items in the list
-                self.todo_list.items.swap(index, index - 1);
-                self.todo_list.state.select(Some(index - 1));
+                self.uncompleted_todo_list.items.swap(index, index - 1);
+                self.uncompleted_todo_list.state.select(Some(index - 1));
 
                 // Update database
                 self.update_sort_orders_in_db();
@@ -172,18 +144,18 @@ impl App {
     }
 
     pub fn move_todo_down(&mut self) {
-        if let Some(index) = self.todo_list.state.selected() {
-            if index < self.todo_list.items.len() - 1 {
+        if let Some(index) = self.uncompleted_todo_list.state.selected() {
+            if index < self.uncompleted_todo_list.items.len() - 1 {
                 // Swap sort_orders between current and next item
-                let current_order = self.todo_list.items[index].sort_order;
-                let next_order = self.todo_list.items[index + 1].sort_order;
+                let current_order = self.uncompleted_todo_list.items[index].sort_order;
+                let next_order = self.uncompleted_todo_list.items[index + 1].sort_order;
 
-                self.todo_list.items[index].sort_order = next_order;
-                self.todo_list.items[index + 1].sort_order = current_order;
+                self.uncompleted_todo_list.items[index].sort_order = next_order;
+                self.uncompleted_todo_list.items[index + 1].sort_order = current_order;
 
                 // Swap items in the list
-                self.todo_list.items.swap(index, index + 1);
-                self.todo_list.state.select(Some(index + 1));
+                self.uncompleted_todo_list.items.swap(index, index + 1);
+                self.uncompleted_todo_list.state.select(Some(index + 1));
 
                 // Update database
                 self.update_sort_orders_in_db();
@@ -193,7 +165,7 @@ impl App {
 
     fn update_sort_orders_in_db(&self) {
         let pool = self.pool.clone();
-        let items = self.todo_list.items.clone();
+        let items = self.uncompleted_todo_list.items.clone();
 
         tokio::spawn(async move {
             for item in items {
@@ -210,23 +182,23 @@ impl App {
 
     /// Selection methods for navigating the todo list
     pub fn select_none(&mut self) {
-        self.todo_list.state.select(None);
+        self.uncompleted_todo_list.state.select(None);
     }
 
     pub fn select_next(&mut self) {
-        self.todo_list.state.select_next();
+        self.uncompleted_todo_list.state.select_next();
     }
 
     pub fn select_previous(&mut self) {
-        self.todo_list.state.select_previous();
+        self.uncompleted_todo_list.state.select_previous();
     }
 
     pub fn select_first(&mut self) {
-        self.todo_list.state.select_first();
+        self.uncompleted_todo_list.state.select_first();
     }
 
     pub fn select_last(&mut self) {
-        self.todo_list.state.select_last();
+        self.uncompleted_todo_list.state.select_last();
     }
 }
 
@@ -236,15 +208,15 @@ impl App {
         let Some(index) = self.editing_index else {
             return;
         };
-        if index >= self.todo_list.items.len() {
+        if index >= self.uncompleted_todo_list.items.len() {
             return;
         }
 
         let new_text = self.textarea.lines().join("\n");
-        self.todo_list.items[index].todo = new_text.clone();
+        self.uncompleted_todo_list.items[index].todo = new_text.clone();
 
         let pool = self.pool.clone();
-        let todo_id = self.todo_list.items[index].id;
+        let todo_id = self.uncompleted_todo_list.items[index].id;
 
         tokio::spawn(async move {
             if let Some(id) = todo_id {
@@ -285,10 +257,10 @@ impl App {
     }
 
     pub fn enter_edit_mode(&mut self) {
-        let Some(index) = self.todo_list.state.selected() else {
+        let Some(index) = self.uncompleted_todo_list.state.selected() else {
             return;
         };
-        let Some(todo) = self.todo_list.items.get(index) else {
+        let Some(todo) = self.uncompleted_todo_list.items.get(index) else {
             return;
         };
 
@@ -303,24 +275,27 @@ impl App {
 
     /// Changes the status of the selected list item
     pub fn toggle_status(&mut self) {
-        let Some(index) = self.todo_list.state.selected() else {
+        let Some(index) = self.uncompleted_todo_list.state.selected() else {
             return;
         };
-        let Some(todo) = self.todo_list.items.get(index) else {
+        let Some(todo) = self.uncompleted_todo_list.items.get(index) else {
             return;
         };
 
         let pool = self.pool.clone();
         let todo_id = todo.id;
 
-        self.todo_list.items[index].completed_at =
-            if self.todo_list.items[index].completed_at.is_some() {
-                None
-            } else {
-                Some(Local::now().naive_local())
-            };
+        self.uncompleted_todo_list.items[index].completed_at = if self.uncompleted_todo_list.items
+            [index]
+            .completed_at
+            .is_some()
+        {
+            None
+        } else {
+            Some(Local::now().naive_local())
+        };
 
-        let todo_item = self.todo_list.items[index].clone();
+        let todo_item = self.uncompleted_todo_list.items[index].clone();
 
         tokio::spawn(async move {
             if let Err(e) =
@@ -334,7 +309,7 @@ impl App {
     /// Adds a new todo item from user input
     pub fn add_input_todo(&mut self) {
         let next_sort_order = self
-            .todo_list
+            .uncompleted_todo_list
             .items
             .iter()
             .map(|item| item.sort_order)
@@ -343,10 +318,10 @@ impl App {
             + 10;
 
         let parent_id = if self.creating_child_todo {
-            self.todo_list
+            self.uncompleted_todo_list
                 .state
                 .selected()
-                .and_then(|index| self.todo_list.items.get(index))
+                .and_then(|index| self.uncompleted_todo_list.items.get(index))
                 .and_then(|item| item.id)
         } else {
             None
@@ -365,17 +340,18 @@ impl App {
             }
         });
 
-        self.todo_list.items.push(todo_item);
-        self.todo_list.items = sort_todos_hierarchically(self.todo_list.items.clone());
+        self.uncompleted_todo_list.items.push(todo_item);
+        self.uncompleted_todo_list.items =
+            sort_todos_hierarchically(self.uncompleted_todo_list.items.clone());
         self.textarea = TextArea::default();
         self.input_mode.toggle();
     }
 
     /// Deletes the currently selected todo item
     pub fn delete_selected_todo(&mut self) {
-        if let Some(index) = self.todo_list.state.selected() {
-            if index < self.todo_list.items.len() {
-                let todo_to_delete = self.todo_list.items[index].clone();
+        if let Some(index) = self.uncompleted_todo_list.state.selected() {
+            if index < self.uncompleted_todo_list.items.len() {
+                let todo_to_delete = self.uncompleted_todo_list.items[index].clone();
                 let pool = self.pool.clone();
 
                 tokio::spawn(async move {
@@ -386,14 +362,14 @@ impl App {
                     }
                 });
 
-                self.todo_list.items.remove(index);
+                self.uncompleted_todo_list.items.remove(index);
 
-                if self.todo_list.items.is_empty() {
-                    self.todo_list.state.select(None);
-                } else if index >= self.todo_list.items.len() {
-                    self.todo_list
+                if self.uncompleted_todo_list.items.is_empty() {
+                    self.uncompleted_todo_list.state.select(None);
+                } else if index >= self.uncompleted_todo_list.items.len() {
+                    self.uncompleted_todo_list
                         .state
-                        .select(Some(self.todo_list.items.len() - 1));
+                        .select(Some(self.uncompleted_todo_list.items.len() - 1));
                 }
             }
         }
