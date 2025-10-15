@@ -47,6 +47,11 @@ pub struct TodoRow {
     pub sort_order: i32,
 }
 
+pub enum WhichList {
+    Uncompleted,
+    Completed,
+}
+
 pub fn parse_date_string(date_str: &str) -> NaiveDateTime {
     NaiveDateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S")
         .unwrap_or_else(|_| Local::now().naive_local())

@@ -11,7 +11,7 @@ use tui_textarea::TextArea;
 
 use crate::db;
 use crate::models::{
-    CompletedTodoList, InputMode, TodoItem, TodoList, TodoRow, new_todo_item, parse_date_string,
+    CompletedTodoList, InputMode, TodoItem, TodoList, WhichList, new_todo_item, parse_date_string,
     sort_todos_hierarchically,
 };
 
@@ -99,7 +99,7 @@ impl App {
                 KeyCode::Char('J') => self.move_todo_down(),
                 KeyCode::Char('K') => self.move_todo_up(),
                 KeyCode::Char('c') | KeyCode::Right | KeyCode::Enter => {
-                    self.toggle_status();
+                    self.toggle_status(WhichList::Uncompleted);
                 }
                 _ => {}
             },
@@ -286,11 +286,22 @@ impl App {
     }
 
     /// Changes the status of the selected list item
-    pub fn toggle_status(&mut self) {
-        let Some(index) = self.uncompleted_todo_list.state.selected() else {
+    pub fn toggle_status(&mut self, which_list: WhichList) {
+        let (list_items, state) = match which_list {
+            WhichList::Uncompleted => (
+                &self.uncompleted_todo_list.items,
+                &self.uncompleted_todo_list.state,
+            ),
+            WhichList::Completed => (
+                &self.completed_todo_list.items,
+                &self.completed_todo_list.state,
+            ),
+        };
+
+        let Some(index) = state.selected() else {
             return;
         };
-        let Some(todo) = self.uncompleted_todo_list.items.get(index) else {
+        let Some(todo) = list_items.get(index) else {
             return;
         };
 
