@@ -47,6 +47,7 @@ pub struct TodoRow {
     pub sort_order: i32,
 }
 
+#[derive(Copy, Clone)]
 pub enum WhichList {
     Uncompleted,
     Completed,

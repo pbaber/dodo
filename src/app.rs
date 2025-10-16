@@ -23,6 +23,7 @@ pub struct App {
     pub creating_child_todo: bool,
     pub editing_index: Option<usize>,
     pub input_mode: InputMode,
+    pub focused_list: WhichList,
     pub textarea: TextArea<'static>,
 }
 
@@ -66,6 +67,7 @@ impl App {
                 items: completed_items,
                 state: ListState::default(),
             },
+            focused_list: WhichList::Uncompleted,
             textarea: TextArea::default(),
         })
     }
@@ -98,8 +100,9 @@ impl App {
                 KeyCode::Char('G') | KeyCode::End => self.select_last(),
                 KeyCode::Char('J') => self.move_todo_down(),
                 KeyCode::Char('K') => self.move_todo_up(),
+                KeyCode::Tab => self.toggle_focused_list(),
                 KeyCode::Char('c') | KeyCode::Right | KeyCode::Enter => {
-                    self.toggle_status(WhichList::Uncompleted);
+                    self.toggle_status(self.focused_list);
                 }
                 _ => {}
             },
@@ -317,6 +320,13 @@ impl App {
 
         if let Err(e) = self.refresh_from_database() {
             eprintln!("Database error refreshing lists: {e}");
+        }
+    }
+
+    pub fn toggle_focused_list(&mut self) {
+        self.focused_list = match self.focused_list {
+            WhichList::Uncompleted => WhichList::Completed,
+            WhichList::Completed => WhichList::Uncompleted,
         }
     }
 
