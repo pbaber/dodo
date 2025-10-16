@@ -184,25 +184,32 @@ impl App {
         });
     }
 
+    fn focused_state(&mut self) -> &mut ratatui::widgets::ListState {
+        match self.focused_list {
+            WhichList::Uncompleted => &mut self.uncompleted_todo_list.state,
+            WhichList::Completed => &mut self.completed_todo_list.state,
+        }
+    }
+
     /// Selection methods for navigating the todo list
     pub fn select_none(&mut self) {
-        self.uncompleted_todo_list.state.select(None);
+        self.focused_state().select(None);
     }
 
     pub fn select_next(&mut self) {
-        self.uncompleted_todo_list.state.select_next();
+        self.focused_state().select_next();
     }
 
     pub fn select_previous(&mut self) {
-        self.uncompleted_todo_list.state.select_previous();
+        self.focused_state().select_previous();
     }
 
     pub fn select_first(&mut self) {
-        self.uncompleted_todo_list.state.select_first();
+        self.focused_state().select_first();
     }
 
     pub fn select_last(&mut self) {
-        self.uncompleted_todo_list.state.select_last();
+        self.focused_state().select_last();
     }
 }
 
