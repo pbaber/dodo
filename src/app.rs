@@ -100,7 +100,10 @@ impl App {
                 KeyCode::Char('G') | KeyCode::End => self.select_last(),
                 KeyCode::Char('J') => self.move_todo_down(),
                 KeyCode::Char('K') => self.move_todo_up(),
-                KeyCode::Tab => self.toggle_focused_list(),
+                KeyCode::Tab => {
+                    self.toggle_focused_list();
+                    self.unfocused_state().select(None);
+                }
                 KeyCode::Char('c') | KeyCode::Right | KeyCode::Enter => {
                     self.toggle_status(self.focused_list);
                 }
@@ -188,6 +191,13 @@ impl App {
         match self.focused_list {
             WhichList::Uncompleted => &mut self.uncompleted_todo_list.state,
             WhichList::Completed => &mut self.completed_todo_list.state,
+        }
+    }
+
+    fn unfocused_state(&mut self) -> &mut ratatui::widgets::ListState {
+        match self.focused_list {
+            WhichList::Uncompleted => &mut self.completed_todo_list.state,
+            WhichList::Completed => &mut self.uncompleted_todo_list.state,
         }
     }
 
