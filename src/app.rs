@@ -103,7 +103,7 @@ impl App {
                 KeyCode::Tab => {
                     self.toggle_focused_list();
                     self.unfocused_state().select(None);
-                    self.focused_state().select(Some(0 as usize));
+                    self.focused_state().select(Some(0));
                 }
                 KeyCode::Char('c') | KeyCode::Right | KeyCode::Enter => {
                     self.toggle_status(self.focused_list);
