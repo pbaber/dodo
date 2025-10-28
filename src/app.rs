@@ -11,7 +11,7 @@ use tui_textarea::TextArea;
 
 use crate::db;
 use crate::models::{
-    CompletedTodoList, InputMode, TodoItem, TodoList, WhichList, new_todo_item, parse_date_string,
+    CompletedTodoList, InputMode, TodoItem, TodoList, WhichList, new_todo_item,
     sort_todos_hierarchically,
 };
 

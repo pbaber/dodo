@@ -1,9 +1,10 @@
 use crate::models::*;
+use color_eyre::owo_colors::OwoColorize;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::palette::tailwind::SLATE;
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, HighlightSpacing, List, ListItem, Paragraph};
+use ratatui::widgets::{Block, Borders, HighlightSpacing, List, ListItem, Paragraph};
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 
@@ -139,10 +140,26 @@ pub fn completed_todo_list(app: &crate::app::App, width: u16) -> List<'static> {
         .collect();
 
     List::new(todo_items)
-        .block(Block::new())
+        .block(get_list_block(
+            app.focused_list == WhichList::Completed,
+            "Completed",
+        ))
         .highlight_style(SELECTED_STYLE)
         .highlight_symbol(">")
         .highlight_spacing(HighlightSpacing::Always)
+}
+
+fn get_list_block(is_focused: bool, title: &str) -> Block<'static> {
+    if is_focused {
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title.to_string())
+            .border_style(Style::default().fg(Color::Green))
+    } else {
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title.to_string())
+    }
 }
 
 pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
@@ -187,7 +204,10 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
         .collect();
 
     List::new(todo_items)
-        .block(Block::new())
+        .block(get_list_block(
+            app.focused_list == WhichList::Uncompleted,
+            "Active Tasks",
+        ))
         .highlight_style(SELECTED_STYLE)
         .highlight_symbol(">")
         .highlight_spacing(HighlightSpacing::Always)
