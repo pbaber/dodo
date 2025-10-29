@@ -1,5 +1,4 @@
 use crate::models::*;
-use color_eyre::owo_colors::OwoColorize;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::palette::tailwind::SLATE;
 use ratatui::style::{Color, Modifier, Style, Stylize};
@@ -12,22 +11,15 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
     let terminal_width = frame.area().width;
 
     let main_layout = Layout::vertical([
-        Constraint::Length(1), // top part shows modes
-        Constraint::Max(calculate_total_display_lines(app, terminal_width - 2) as u16), // The
-        // actual list
-        Constraint::Fill(1),    // blank area seperates top and bottom
+        Constraint::Length(1),  // top part shows modes
+        Constraint::Fill(1),    // The actual list
         Constraint::Length(10), // completed tasks list
         Constraint::Length(1),  // hotkeys
     ]);
 
     let areas = main_layout.split(frame.area());
-    let [
-        mode_area,
-        todo_list_area,
-        blank_area,
-        completed_tasks,
-        hotkeys_area,
-    ] = [areas[0], areas[1], areas[2], areas[3], areas[4]];
+    let [mode_area, todo_list_area, completed_tasks, hotkeys_area] =
+        [areas[0], areas[1], areas[2], areas[3]];
 
     // Rendering each area
     frame.render_widget(title(app), mode_area);
@@ -42,7 +34,6 @@ pub fn render_impl(app: &mut crate::app::App, frame: &mut ratatui::Frame) {
         &mut app.completed_todo_list.state,
     );
 
-    frame.render_widget(Paragraph::new(String::from("")), blank_area);
     frame.render_widget(footer(), hotkeys_area);
     render_input_box(app, frame);
 }
@@ -213,6 +204,7 @@ pub fn todo_list(app: &crate::app::App, width: u16) -> List<'static> {
         .highlight_spacing(HighlightSpacing::Always)
 }
 
+#[allow(dead_code)]
 pub fn calculate_total_display_lines(app: &crate::app::App, width: u16) -> usize {
     app.uncompleted_todo_list
         .items
